@@ -40,7 +40,7 @@ LoginHandler::LoginHandler()
     mVfs.AddArchiveLoader(new ttvfs::VFSZipArchiveLoader);
 
     ttvfs::CountedPtr<ttvfs::MemFile> pMemoryFile = new ttvfs::MemFile(
-        "login.zip", ResourceLogin, ResourceLoginSize);
+        "login.zip", ResourceLogin, static_cast<int32_t>(ResourceLoginSize));
 
     if(!mVfs.AddArchive(pMemoryFile, ""))
     {
@@ -171,6 +171,8 @@ void LoginHandler::ParsePost(CivetServer *pServer,
 bool LoginHandler::HandlePage(CivetServer *pServer,
     struct mg_connection *pConnection, ReplacementVariables& postVars)
 {
+    (void)pServer;
+
     libcomp::String uri("index.html");
 
     const mg_request_info *pRequestInfo = mg_get_request_info(pConnection);

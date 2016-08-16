@@ -36,7 +36,7 @@ namespace lobby
 class LobbyServer : public libcomp::TcpServer
 {
 public:
-    LobbyServer(libcomp::String listenAddress, int port);
+    LobbyServer(libcomp::String listenAddress, int16_t port);
     virtual ~LobbyServer();
 
 protected:
