@@ -31,7 +31,7 @@
 #include <CivetServer.h>
 
 // libcomp Includes
-#include <String.h>
+#include <CString.h>
 
 // Standard C++11 Includes
 #include <vector>
