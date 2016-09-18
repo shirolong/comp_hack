@@ -31,7 +31,7 @@
 
 using namespace lobby;
 
-LobbyServer::LobbyServer(libcomp::String listenAddress, int16_t port) :
+LobbyServer::LobbyServer(libcomp::String listenAddress, uint16_t port) :
     libcomp::TcpServer(listenAddress, port)
 {
 }

@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 
     std::ofstream out;
     out.open(argv[2], std::ofstream::out | std::ofstream::binary);
-    out.write(&data[0], data.size());
+    out.write(&data[0], static_cast<std::streamsize>(data.size()));
 
     return out.good() ? EXIT_SUCCESS : EXIT_FAILURE;
 }

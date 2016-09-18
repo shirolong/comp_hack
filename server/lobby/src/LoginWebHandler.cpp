@@ -40,7 +40,7 @@ LoginHandler::LoginHandler()
     mVfs.AddArchiveLoader(new ttvfs::VFSZipArchiveLoader);
 
     ttvfs::CountedPtr<ttvfs::MemFile> pMemoryFile = new ttvfs::MemFile(
-        "login.zip", ResourceLogin, static_cast<int32_t>(ResourceLoginSize));
+        "login.zip", ResourceLogin, static_cast<uint32_t>(ResourceLoginSize));
 
     if(!mVfs.AddArchive(pMemoryFile, ""))
     {
@@ -93,7 +93,8 @@ void LoginHandler::ParsePost(CivetServer *pServer,
         return;
     }
 
-    size_t postContentLength = pRequestInfo->content_length;
+    size_t postContentLength = static_cast<size_t>(
+        pRequestInfo->content_length);
 
     // Sanity check the post content length.
     if(0 == postContentLength)
@@ -105,7 +106,8 @@ void LoginHandler::ParsePost(CivetServer *pServer,
     char *szPostData = new char[postContentLength + 1];
 
     // Read the post data.
-    postContentLength = mg_read(pConnection, szPostData, postContentLength);
+    postContentLength = static_cast<size_t>(mg_read(
+        pConnection, szPostData, postContentLength));
     szPostData[postContentLength] = 0;
 
     // Last read post value.
@@ -281,7 +283,7 @@ std::vector<char> LoginHandler::LoadVfsFile(const libcomp::String& path)
         return std::vector<char>();
     }
 
-    size_t fileSize = vf->size();
+    size_t fileSize = static_cast<size_t>(vf->size());
 
     data.resize(fileSize);
 
