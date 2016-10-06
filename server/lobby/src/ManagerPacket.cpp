@@ -38,8 +38,14 @@ using namespace lobby;
 
 ManagerPacket::ManagerPacket()
 {
-    mPacketParsers[0x0005] = std::shared_ptr<PacketParser>(
+    mPacketParsers[0x0003] = std::shared_ptr<PacketParser>(
         new Parsers::Login());
+    mPacketParsers[0x0005] = std::shared_ptr<PacketParser>(
+        new Parsers::Auth());
+    mPacketParsers[0x0009] = std::shared_ptr<PacketParser>(
+        new Parsers::CharacterList());
+    mPacketParsers[0x000B] = std::shared_ptr<PacketParser>(
+        new Parsers::WorldList());
 }
 
 ManagerPacket::~ManagerPacket()
@@ -68,7 +74,7 @@ bool ManagerPacket::ProcessMessage(const libcomp::Message::Message *pMessage)
         p.Rewind();
         p.HexDump();
 
-        CommandCode_t code = p.ReadU16Little();
+        CommandCode_t code = pPacketMessage->GetCommandCode();
 
         auto it = mPacketParsers.find(code);
 
@@ -80,7 +86,7 @@ bool ManagerPacket::ProcessMessage(const libcomp::Message::Message *pMessage)
             return false;
         }
 
-        return it->second->Parse(this, p);
+        return it->second->Parse(this, pPacketMessage->GetConnection(), p);
     }
     else
     {

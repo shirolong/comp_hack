@@ -49,7 +49,10 @@ SET(${PROJECT_NAME}_HDRS
 )
 
 SET(${PROJECT_NAME}_PACKETS
-    src/packets/Login.cpp
+    src/packets/Login.cpp         # 0x0003
+    src/packets/Auth.cpp          # 0x0005
+    src/packets/CharacterList.cpp # 0x0009
+    src/packets/WorldList.cpp     # 0x000B
 )
 
 ADD_CUSTOM_COMMAND(

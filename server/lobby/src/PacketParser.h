@@ -27,10 +27,14 @@
 #ifndef LIBCOMP_SRC_PACKETPARSER_H
 #define LIBCOMP_SRC_PACKETPARSER_H
 
+// Standard C++ Includes
+#include <memory>
+
 namespace libcomp
 {
 
 class ReadOnlyPacket;
+class TcpConnection;
 
 } // namespace libcomp
 
@@ -46,6 +50,7 @@ public:
     virtual ~PacketParser() { }
 
     virtual bool Parse(ManagerPacket *pPacketManager,
+        const std::shared_ptr<libcomp::TcpConnection>& connection,
         libcomp::ReadOnlyPacket& p) const = 0;
 };
 
@@ -59,6 +64,7 @@ public:
         virtual ~name() { } \
         \
         virtual bool Parse(ManagerPacket *pPacketManager, \
+            const std::shared_ptr<libcomp::TcpConnection>& connection, \
             libcomp::ReadOnlyPacket& p) const; \
     }
 

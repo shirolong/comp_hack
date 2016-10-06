@@ -1,10 +1,10 @@
 /**
- * @file server/lobby/src/Packets.h
+ * @file server/lobby/src/packets/Login.cpp
  * @ingroup lobby
  *
  * @author COMP Omega <compomega@tutanota.com>
  *
- * @brief Classes used to parse client lobby packets.
+ * @brief Manager to handle lobby packets.
  *
  * This file is part of the Lobby Server (lobby).
  *
@@ -24,25 +24,41 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LIBCOMP_SRC_PACKETS_H
-#define LIBCOMP_SRC_PACKETS_H
+#include "Packets.h"
 
-// lobby Includes
-#include "PacketParser.h"
+// libcomp Includes
+#include "Decrypt.h"
+#include "Log.h"
+#include "Packet.h"
+#include "ReadOnlyPacket.h"
+#include "TcpConnection.h"
 
-namespace lobby
+using namespace lobby;
+
+bool Parsers::CharacterList::Parse(ManagerPacket *pPacketManager,
+    const std::shared_ptr<libcomp::TcpConnection>& connection,
+    libcomp::ReadOnlyPacket& p) const
 {
+    (void)pPacketManager;
 
-namespace Parsers
-{
+    if(p.Size() != 0)
+    {
+        return false;
+    }
 
-PACKET_PARSER_DECL(Login);         // 0x0003
-PACKET_PARSER_DECL(Auth);          // 0x0005
-PACKET_PARSER_DECL(CharacterList); // 0x0009
-PACKET_PARSER_DECL(WorldList);     // 0x000B
+    libcomp::Packet reply;
+    reply.WriteU16Little(0x000A);
 
-} // namespace Parsers
+    // Time of last login (time_t).
+    reply.WriteU32Little((uint32_t)time(0));
 
-} // namespace libcomp
+    // Number of character tickets.
+    reply.WriteU8(1);
 
-#endif // LIBCOMP_SRC_PACKETS_H
+    // Number of characters.
+    reply.WriteU8(0);
+
+    connection->SendPacket(reply);
+
+    return true;
+}
