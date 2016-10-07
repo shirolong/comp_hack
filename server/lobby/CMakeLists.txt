@@ -49,10 +49,15 @@ SET(${PROJECT_NAME}_HDRS
 )
 
 SET(${PROJECT_NAME}_PACKETS
-    src/packets/Login.cpp         # 0x0003
-    src/packets/Auth.cpp          # 0x0005
-    src/packets/CharacterList.cpp # 0x0009
-    src/packets/WorldList.cpp     # 0x000B
+    src/packets/Login.cpp               # 0x0003
+    src/packets/Auth.cpp                # 0x0005
+    src/packets/StartGame.cpp           # 0x0007
+    src/packets/CharacterList.cpp       # 0x0009
+    src/packets/WorldList.cpp           # 0x000B
+    src/packets/CreateCharacter.cpp     # 0x000D
+    src/packets/DeleteCharacter.cpp     # 0x000F
+    src/packets/QueryPurchaseTicket.cpp # 0x0011
+    src/packets/PurchaseTicket.cpp      # 0x0013
 )
 
 ADD_CUSTOM_COMMAND(

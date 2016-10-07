@@ -56,7 +56,66 @@ bool Parsers::CharacterList::Parse(ManagerPacket *pPacketManager,
     reply.WriteU8(1);
 
     // Number of characters.
-    reply.WriteU8(0);
+    reply.WriteU8(1);
+
+    {
+        // Character ID.
+        reply.WriteU8(0);
+
+        // World ID.
+        reply.WriteU8(0);
+
+        // Name.
+        reply.WriteString16Little(libcomp::Convert::ENCODING_CP932,
+            "テスト", true);
+
+        // Gender.
+        reply.WriteU8(0);
+
+        // Time when the character will be deleted.
+        reply.WriteU32Little(0);
+
+        // Cutscene to play on login (0 for none).
+        reply.WriteU32Little(0x001EFC77);
+
+        // Last channel used???
+        reply.WriteS8(-1);
+
+        // Level.
+        reply.WriteU8(1);
+
+        // Skin type.
+        reply.WriteU8(0x65);
+
+        // Hair type.
+        reply.WriteU8(8);
+
+        // Eye type.
+        reply.WriteU8(1);
+
+        // Face type.
+        reply.WriteU8(1);
+
+        // Hair color.
+        reply.WriteU8(8);
+
+        // Left eye color.
+        reply.WriteU8(0x64);
+
+        // Right eye color.
+        reply.WriteU8(0x3F);
+
+        // Unkown values.
+        reply.WriteU8(0);
+        reply.WriteU8(1);
+
+        // Equipment
+        for(int z = 0; z < 15; z++)
+        {
+            // None.
+            reply.WriteU32Little(0x7FFFFFFF);
+        }
+    }
 
     connection->SendPacket(reply);
 
