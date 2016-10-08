@@ -30,7 +30,7 @@
 #include <Log.h>
 
 // channel Includes
-//#include "ChannelConnection.h"
+#include "ChannelConnection.h"
 
 // Object Includes
 #include "ChannelConfig.h"
@@ -74,7 +74,6 @@ ChannelServer::~ChannelServer()
 std::shared_ptr<libcomp::TcpConnection> ChannelServer::CreateConnection(
     asio::ip::tcp::socket& socket)
 {
-#if 0
     auto connection = std::shared_ptr<libcomp::TcpConnection>(
         new libcomp::ChannelConnection(socket, CopyDiffieHellman(
             GetDiffieHellman())
@@ -90,9 +89,4 @@ std::shared_ptr<libcomp::TcpConnection> ChannelServer::CreateConnection(
     connection->ConnectionSuccess();
 
     return connection;
-#else
-    (void)socket;
-
-    return std::shared_ptr<libcomp::TcpConnection>();
-#endif
 }
