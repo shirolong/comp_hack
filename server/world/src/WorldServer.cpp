@@ -1,12 +1,12 @@
 /**
- * @file libobjgen/src/GeneratorSource.h
- * @ingroup libobjgen
+ * @file server/world/src/WorldServer.cpp
+ * @ingroup world
  *
- * @author COMP Omega <compomega@tutanota.com>
+ * @author HACKfrost
  *
- * @brief C++ source generator to write source code for an object.
+ * @brief World server class.
  *
- * This file is part of the COMP_hack Object Generator Library (libobjgen).
+ * This file is part of the World Server (world).
  *
  * Copyright (C) 2012-2016 COMP_hack Team <compomega@tutanota.com>
  *
@@ -24,24 +24,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LIBOBJGEN_SRC_GENERATORSOURCE_H
-#define LIBOBJGEN_SRC_GENERATORSOURCE_H
+#include "WorldServer.h"
 
-// libobjgen Includes
-#include "Generator.h"
+// world Includes
+#include "InternalConnection.h"
 
-namespace libobjgen
+// Object Includes
+#include "WorldConfig.h"
+
+using namespace world;
+
+WorldServer::WorldServer(libcomp::String listenAddress, uint16_t port) :
+    libcomp::InternalServer(listenAddress, port)
 {
+    objects::WorldConfig config;
+    ReadConfig(&config, "world.xml");
 
-class GeneratorSource : public Generator
+    //todo: add worker managers
+
+    //Start the workers
+    mWorker.Start();
+}
+
+WorldServer::~WorldServer()
 {
-public:
-    virtual std::string Generate(const MetaObject& obj);
-
-private:
-    std::string GetBaseBooleanReturnValue(const MetaObject& obj, std::string function, std::string defaultValue = "true");
-};
-
-} // namespace libobjgen
-
-#endif // LIBOBJGEN_SRC_GENERATORSOURCE_H
+}

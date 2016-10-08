@@ -1,12 +1,12 @@
 /**
- * @file libobjgen/src/GeneratorSource.h
- * @ingroup libobjgen
+ * @file server/channel/src/ChannelServer.cpp
+ * @ingroup channel
  *
- * @author COMP Omega <compomega@tutanota.com>
+ * @author HACKfrost
  *
- * @brief C++ source generator to write source code for an object.
+ * @brief Channel server class.
  *
- * This file is part of the COMP_hack Object Generator Library (libobjgen).
+ * This file is part of the Channel Server (channel).
  *
  * Copyright (C) 2012-2016 COMP_hack Team <compomega@tutanota.com>
  *
@@ -24,24 +24,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LIBOBJGEN_SRC_GENERATORSOURCE_H
-#define LIBOBJGEN_SRC_GENERATORSOURCE_H
+#include "ChannelServer.h"
 
-// libobjgen Includes
-#include "Generator.h"
+// channel Includes
+#include "InternalConnection.h"
 
-namespace libobjgen
+// Object Includes
+#include "ChannelConfig.h"
+
+using namespace channel;
+
+ChannelServer::ChannelServer(libcomp::String listenAddress, uint16_t port) :
+    libcomp::InternalServer(listenAddress, port)
 {
+    objects::ChannelConfig config;
+    ReadConfig(&config, "channel.xml");
 
-class GeneratorSource : public Generator
+    //todo: add worker managers
+
+    //Start the workers
+    mWorker.Start();
+}
+
+ChannelServer::~ChannelServer()
 {
-public:
-    virtual std::string Generate(const MetaObject& obj);
-
-private:
-    std::string GetBaseBooleanReturnValue(const MetaObject& obj, std::string function, std::string defaultValue = "true");
-};
-
-} // namespace libobjgen
-
-#endif // LIBOBJGEN_SRC_GENERATORSOURCE_H
+}

@@ -1,12 +1,12 @@
 /**
- * @file libobjgen/src/GeneratorSource.h
- * @ingroup libobjgen
+ * @file server/channel/src/ChannelServer.h
+ * @ingroup channel
  *
- * @author COMP Omega <compomega@tutanota.com>
+ * @author HACKfrost
  *
- * @brief C++ source generator to write source code for an object.
+ * @brief Channel server class.
  *
- * This file is part of the COMP_hack Object Generator Library (libobjgen).
+ * This file is part of the Channel Server (channel).
  *
  * Copyright (C) 2012-2016 COMP_hack Team <compomega@tutanota.com>
  *
@@ -24,24 +24,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LIBOBJGEN_SRC_GENERATORSOURCE_H
-#define LIBOBJGEN_SRC_GENERATORSOURCE_H
+#ifndef SERVER_CHANNEL_SRC_CHANNELSERVER_H
+#define SERVER_CHANNEL_SRC_CHANNELSERVER_H
 
-// libobjgen Includes
-#include "Generator.h"
+// libcomp Includes
+#include <InternalServer.h>
 
-namespace libobjgen
+namespace channel
 {
 
-class GeneratorSource : public Generator
+class ChannelServer : public libcomp::InternalServer
 {
 public:
-    virtual std::string Generate(const MetaObject& obj);
-
-private:
-    std::string GetBaseBooleanReturnValue(const MetaObject& obj, std::string function, std::string defaultValue = "true");
+    ChannelServer(libcomp::String listenAddress, uint16_t port);
+    virtual ~ChannelServer();
 };
 
-} // namespace libobjgen
+} // namespace channel
 
-#endif // LIBOBJGEN_SRC_GENERATORSOURCE_H
+#endif // SERVER_CHANNEL_SRC_CHANNELSERVER_H
