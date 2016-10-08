@@ -31,6 +31,7 @@
 
 // channel Includes
 #include "ChannelConnection.h"
+#include "ManagerPacket.h"
 
 // Object Includes
 #include "ChannelConfig.h"
@@ -60,11 +61,12 @@ ChannelServer::ChannelServer(const libcomp::String& listenAddress,
         LOG_CRITICAL("Failed to connect to the world server!\n");
     }
 
-    //todo: add worker managers
+    // Add the managers to the worker.
+    mWorker.AddManager(std::shared_ptr<libcomp::Manager>(new ManagerPacket()));
 
     //Start the workers
     mMainWorker.Start();
-    mChannelWorker.Start();
+    mWorker.Start();
 }
 
 ChannelServer::~ChannelServer()
@@ -82,7 +84,7 @@ std::shared_ptr<libcomp::TcpConnection> ChannelServer::CreateConnection(
 
     // Assign this to the only worker available.
     std::dynamic_pointer_cast<libcomp::ChannelConnection>(
-        connection)->SetMessageQueue(mChannelWorker.GetMessageQueue());
+        connection)->SetMessageQueue(mWorker.GetMessageQueue());
 
     // Make sure this is called after connecting.
     connection->SetSelf(connection);

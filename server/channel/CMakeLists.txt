@@ -31,11 +31,15 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/res/login)
 
 SET(${PROJECT_NAME}_SRCS
     src/ChannelServer.cpp
+    src/ManagerPacket.cpp
     src/main.cpp
 )
 
 SET(${PROJECT_NAME}_HDRS
     src/ChannelServer.h
+    src/ManagerPacket.h
+    src/PacketParser.h
+    src/Packets.h
 )
 
 SET(${PROJECT_NAME}_PACKETS

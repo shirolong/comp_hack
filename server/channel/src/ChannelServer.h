@@ -45,7 +45,8 @@ protected:
     virtual std::shared_ptr<libcomp::TcpConnection> CreateConnection(
         asio::ip::tcp::socket& socket);
 
-    libcomp::Worker mChannelWorker;
+    /// @todo Make a bunch of these.
+    libcomp::Worker mWorker;
     std::shared_ptr<libcomp::InternalConnection> mWorldConnection;
 };
 
