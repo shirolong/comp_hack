@@ -39,7 +39,7 @@
 using namespace lobby;
 
 LobbyServer::LobbyServer(const libcomp::String& listenAddress, uint16_t port) :
-    libcomp::TcpServer(listenAddress, port)
+    libcomp::BaseServer(listenAddress, port)
 {
     objects::LobbyConfig config;
     ReadConfig(&config, "lobby.xml");

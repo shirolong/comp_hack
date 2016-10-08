@@ -29,13 +29,13 @@
 
 // libcomp Includes
 #include <InternalConnection.h>
-#include <TcpServer.h>
+#include <BaseServer.h>
 #include <Worker.h>
 
 namespace channel
 {
 
-class ChannelServer : public libcomp::TcpServer
+class ChannelServer : public libcomp::BaseServer
 {
 public:
     ChannelServer(const libcomp::String& listenAddress, uint16_t port);
@@ -45,7 +45,6 @@ protected:
     virtual std::shared_ptr<libcomp::TcpConnection> CreateConnection(
         asio::ip::tcp::socket& socket);
 
-    libcomp::Worker mWorker;
     libcomp::Worker mChannelWorker;
     std::shared_ptr<libcomp::InternalConnection> mWorldConnection;
 };

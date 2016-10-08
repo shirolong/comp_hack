@@ -38,7 +38,7 @@
 using namespace channel;
 
 ChannelServer::ChannelServer(const libcomp::String& listenAddress,
-    uint16_t port) : libcomp::TcpServer(listenAddress, port)
+    uint16_t port) : libcomp::BaseServer(listenAddress, port)
 {
     objects::ChannelConfig config;
     ReadConfig(&config, "channel.xml");
@@ -47,7 +47,7 @@ ChannelServer::ChannelServer(const libcomp::String& listenAddress,
     mWorldConnection = std::shared_ptr<libcomp::InternalConnection>(
         new libcomp::InternalConnection(mService));
     mWorldConnection->SetSelf(mWorldConnection);
-    mWorldConnection->SetMessageQueue(mWorker.GetMessageQueue());
+    mWorldConnection->SetMessageQueue(mMainWorker.GetMessageQueue());
 
     /// @todo Load this from the config.
     mWorldConnection->Connect("127.0.0.1", 18666, false);
@@ -63,7 +63,7 @@ ChannelServer::ChannelServer(const libcomp::String& listenAddress,
     //todo: add worker managers
 
     //Start the workers
-    mWorker.Start();
+    mMainWorker.Start();
     mChannelWorker.Start();
 }
 

@@ -28,13 +28,13 @@
 #define SERVER_LOBBY_SRC_LOBBYSERVER_H
 
 // libcomp Includes
-#include <TcpServer.h>
+#include <BaseServer.h>
 #include <Worker.h>
 
 namespace lobby
 {
 
-class LobbyServer : public libcomp::TcpServer
+class LobbyServer : public libcomp::BaseServer
 {
 public:
     LobbyServer(const libcomp::String& listenAddress, uint16_t port);
@@ -44,6 +44,7 @@ protected:
     virtual std::shared_ptr<libcomp::TcpConnection> CreateConnection(
         asio::ip::tcp::socket& socket);
 
+    /// @todo Replace this with many worker threads.
     libcomp::Worker mWorker;
 };
 

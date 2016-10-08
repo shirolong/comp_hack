@@ -38,7 +38,7 @@
 using namespace world;
 
 WorldServer::WorldServer(libcomp::String listenAddress, uint16_t port) :
-    libcomp::TcpServer(listenAddress, port)
+    libcomp::BaseServer(listenAddress, port)
 {
     asio::io_service service;
 
@@ -90,7 +90,7 @@ WorldServer::WorldServer(libcomp::String listenAddress, uint16_t port) :
     //todo: add worker managers
 
     //Start the workers
-    mWorker.Start();
+    mMainWorker.Start();
 }
 
 WorldServer::~WorldServer()
@@ -109,7 +109,7 @@ std::shared_ptr<libcomp::TcpConnection> WorldServer::CreateConnection(
 
     // Assign this to the only worker available.
     std::dynamic_pointer_cast<libcomp::InternalConnection>(
-        connection)->SetMessageQueue(mWorker.GetMessageQueue());
+        connection)->SetMessageQueue(mMainWorker.GetMessageQueue());
 
     // Make sure this is called after connecting.
     connection->SetSelf(connection);
