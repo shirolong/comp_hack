@@ -29,7 +29,6 @@
 
 // libcomp Includes
 #include <Log.h>
-#include <InternalConnection.h>
 
 int main(int argc, const char *argv[])
 {
@@ -41,26 +40,7 @@ int main(int argc, const char *argv[])
     LOG_INFO("COMP_hack Channel Server v0.0.1 build 1\n");
     LOG_INFO("Copyright (C) 2010-2016 COMP_hack Team\n\n");
 
-    LOG_INFO("Connecting to the World Server...\n");
+    channel::ChannelServer server("any", 14666);
 
-    asio::io_service service;
-
-    std::thread serviceThread([&service]()
-    {
-        LOG_DEBUG("Start service thread...\n");
-        service.run();
-    });
-
-    channel::ChannelServer server("any", 10665);
-    if (server.ConnectToHostServer(service, "127.0.0.1", 10667))
-    {
-        LOG_INFO("World Server connection successful\n");
-        return server.Start();
-    }
-    else
-    {
-        LOG_INFO("World Server connection failed\n");
-        service.stop();
-        return -1;
-    }
+    return server.Start();
 }

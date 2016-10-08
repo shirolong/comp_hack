@@ -38,7 +38,7 @@
 
 using namespace lobby;
 
-LobbyServer::LobbyServer(libcomp::String listenAddress, uint16_t port) :
+LobbyServer::LobbyServer(const libcomp::String& listenAddress, uint16_t port) :
     libcomp::TcpServer(listenAddress, port)
 {
     objects::LobbyConfig config;

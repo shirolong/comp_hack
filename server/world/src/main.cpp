@@ -41,18 +41,9 @@ int main(int argc, const char *argv[])
     LOG_INFO("COMP_hack World Server v0.0.1 build 1\n");
     LOG_INFO("Copyright (C) 2010-2016 COMP_hack Team\n\n");
 
-    LOG_INFO("Connecting to the Lobby Server...\n");
-
-    asio::io_service service;
-
-    std::thread serviceThread([&service]()
-    {
-        LOG_DEBUG("Start service thread...\n");
-        service.run();
-    });
-
-    world::WorldServer server("any", 10667);
-    if (server.ConnectToHostServer(service, "127.0.0.1", 10666))
+    world::WorldServer server("any", 18666);
+/*
+    if (server.ConnectToHostServer("127.0.0.1", 10666))
     {
         LOG_INFO("Lobby Server connection successful\n");
         return server.Start();
@@ -63,4 +54,6 @@ int main(int argc, const char *argv[])
         service.stop();
         return -1;
     }
+*/
+    return server.Start();
 }
