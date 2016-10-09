@@ -30,6 +30,7 @@
 #include "LobbyConnection.h"
 
 // libcomp Includes
+#include <DatabaseCassandra.h>
 #include <Log.h>
 #include <ManagerPacket.h>
 
@@ -43,6 +44,29 @@ LobbyServer::LobbyServer(const libcomp::String& listenAddress, uint16_t port) :
 {
     objects::LobbyConfig config;
     ReadConfig(&config, "lobby.xml");
+
+    /// @todo Setup the database type based on the config.
+    /// @todo Consider moving this into the base server.
+    mDatabase = std::shared_ptr<libcomp::Database>(
+        new libcomp::DatabaseCassandra);
+
+    // Open the database.
+    /// @todo Make the database address a config option.
+    if(!mDatabase->Open("127.0.0.1") || !mDatabase->IsOpen())
+    {
+        LOG_CRITICAL("Failed to open database.\n");
+
+        return;
+    }
+
+    // Setup the database.
+    /// @todo Only if the database does not exist and call Use() instead!
+    if(!mDatabase->Setup())
+    {
+        LOG_CRITICAL("Failed to init database.\n");
+
+        return;
+    }
 
     // Add the managers to the worker.
     mWorker.AddManager(std::shared_ptr<libcomp::Manager>(new ManagerPacket()));
