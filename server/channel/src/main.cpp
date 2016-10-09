@@ -29,6 +29,7 @@
 
 // libcomp Includes
 #include <Log.h>
+#include <Shutdown.h>
 
 int main(int argc, const char *argv[])
 {
@@ -42,5 +43,16 @@ int main(int argc, const char *argv[])
 
     channel::ChannelServer server("any", 14666);
 
-    return server.Start();
+    // Set this for the signal handler.
+    libcomp::Shutdown::Configure(&server);
+
+    // Start the main server loop (blocks until done).
+    int returnCode = server.Start();
+
+    // Complete the shutdown process.
+    libcomp::Shutdown::Complete();
+
+    LOG_INFO("Bye!\n");
+
+    return returnCode;
 }

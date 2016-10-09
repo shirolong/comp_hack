@@ -88,14 +88,10 @@ WorldServer::WorldServer(libcomp::String listenAddress, uint16_t port) :
     ReadConfig(&config, "world.xml");
 
     //todo: add worker managers
-
-    //Start the workers
-    mMainWorker.Start();
 }
 
 WorldServer::~WorldServer()
 {
-    /// @todo stop workers
 }
 
 std::shared_ptr<libcomp::TcpConnection> WorldServer::CreateConnection(

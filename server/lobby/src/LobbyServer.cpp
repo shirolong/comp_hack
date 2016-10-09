@@ -77,6 +77,16 @@ LobbyServer::LobbyServer(const libcomp::String& listenAddress, uint16_t port) :
 
 LobbyServer::~LobbyServer()
 {
+    // Make sure the worker threads stop.
+    mWorker.Join();
+}
+
+void LobbyServer::Shutdown()
+{
+    BaseServer::Shutdown();
+
+    /// @todo Add more workers.
+    mWorker.Shutdown();
 }
 
 std::shared_ptr<libcomp::TcpConnection> LobbyServer::CreateConnection(

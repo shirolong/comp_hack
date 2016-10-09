@@ -29,7 +29,7 @@
 
 // libcomp Includes
 #include <Log.h>
-#include <InternalConnection.h>
+#include <Shutdown.h>
 
 int main(int argc, const char *argv[])
 {
@@ -42,18 +42,17 @@ int main(int argc, const char *argv[])
     LOG_INFO("Copyright (C) 2010-2016 COMP_hack Team\n\n");
 
     world::WorldServer server("any", 18666);
-/*
-    if (server.ConnectToHostServer("127.0.0.1", 10666))
-    {
-        LOG_INFO("Lobby Server connection successful\n");
-        return server.Start();
-    }
-    else
-    {
-        LOG_INFO("Lobby Server connection failed\n");
-        service.stop();
-        return -1;
-    }
-*/
-    return server.Start();
+
+    // Set this for the signal handler.
+    libcomp::Shutdown::Configure(&server);
+
+    // Start the main server loop (blocks until done).
+    int returnCode = server.Start();
+
+    // Complete the shutdown process.
+    libcomp::Shutdown::Complete();
+
+    LOG_INFO("Bye!\n");
+
+    return returnCode;
 }

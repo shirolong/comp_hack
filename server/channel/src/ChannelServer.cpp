@@ -64,13 +64,22 @@ ChannelServer::ChannelServer(const libcomp::String& listenAddress,
     // Add the managers to the worker.
     mWorker.AddManager(std::shared_ptr<libcomp::Manager>(new ManagerPacket()));
 
-    //Start the workers
-    mMainWorker.Start();
+    // Start the workers.
     mWorker.Start();
 }
 
 ChannelServer::~ChannelServer()
 {
+    // Make sure the worker threads stop.
+    mWorker.Join();
+}
+
+void ChannelServer::Shutdown()
+{
+    BaseServer::Shutdown();
+
+    /// @todo Add more workers.
+    mWorker.Shutdown();
 }
 
 std::shared_ptr<libcomp::TcpConnection> ChannelServer::CreateConnection(

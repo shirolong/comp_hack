@@ -41,6 +41,8 @@ public:
     LobbyServer(const libcomp::String& listenAddress, uint16_t port);
     virtual ~LobbyServer();
 
+    virtual void Shutdown();
+
 protected:
     virtual std::shared_ptr<libcomp::TcpConnection> CreateConnection(
         asio::ip::tcp::socket& socket);

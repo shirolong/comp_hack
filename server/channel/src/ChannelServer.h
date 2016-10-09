@@ -41,6 +41,8 @@ public:
     ChannelServer(const libcomp::String& listenAddress, uint16_t port);
     virtual ~ChannelServer();
 
+    virtual void Shutdown();
+
 protected:
     virtual std::shared_ptr<libcomp::TcpConnection> CreateConnection(
         asio::ip::tcp::socket& socket);
