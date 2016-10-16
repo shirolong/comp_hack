@@ -56,7 +56,7 @@ public:
      * @arg clientID ID to identify this client in the log.
      * @arg parent Parent object that this object belongs to. Should remain 0.
      */
-    ChannelConnection(LoggerServer *server, int socketDescriptor,
+    ChannelConnection(LoggerServer *server, qintptr socketDescriptor,
         uint32_t clientID, QObject *parent = 0);
 
     /**
@@ -245,7 +245,7 @@ private:
     QString mClientAddress;
 
     /// Socket descriptior of the client connection.
-    int mSocketDescriptor;
+    qintptr mSocketDescriptor;
 
     /// Unique channel ID of this client connection.
     uint32_t mClientID;

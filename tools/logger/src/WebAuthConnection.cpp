@@ -41,7 +41,7 @@
 #endif // COMP_LOGGER_HEADLESS
 
 WebAuthConnection::WebAuthConnection(LoggerServer *server,
-    int socketDescriptor, uint32_t clientID, QObject *p) : QThread(p),
+    qintptr socketDescriptor, uint32_t clientID, QObject *p) : QThread(p),
     mServer(server), mClientSocket(0), mServerSocket(0),
     mSocketDescriptor(socketDescriptor), mClientID(clientID)
 {

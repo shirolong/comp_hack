@@ -55,7 +55,7 @@ public:
      * @param parent Parent object that this object belongs to.
      * Should remain 0.
      */
-    WebAuthConnection(LoggerServer *server, int socketDescriptor,
+    WebAuthConnection(LoggerServer *server, qintptr socketDescriptor,
         uint32_t clientID, QObject *parent = 0);
 
     /**
@@ -154,7 +154,7 @@ private:
     QString mClientAddress;
 
     /// Socket descriptior of the client connection.
-    int mSocketDescriptor;
+    qintptr mSocketDescriptor;
 
     /// Unique channel ID of this client connection.
     uint32_t mClientID;

@@ -77,9 +77,9 @@ uint64_t microtime()
 }
 #endif // Q_OS_WIN32
 
-ChannelConnection::ChannelConnection(LoggerServer *server, int socketDescriptor,
-    uint32_t clientID, QObject *p) : QThread(p), mServer(server),
-    mClientState(NotConnected), mServerState(NotConnected),
+ChannelConnection::ChannelConnection(LoggerServer *server,
+    qintptr socketDescriptor, uint32_t clientID, QObject *p) : QThread(p),
+    mServer(server), mClientState(NotConnected), mServerState(NotConnected),
     mClientLoginPacket(0), mClientLoginPacketSize(0), mClientSocket(0),
     mServerSocket(0), mSocketDescriptor(socketDescriptor), mClientID(clientID)
 {

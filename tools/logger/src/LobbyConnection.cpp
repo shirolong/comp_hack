@@ -50,7 +50,7 @@ static uint8_t connectMagic[8] = {
 static const uint32_t FORMAT_MAGIC = 0x504D4F43; // COMP
 static const uint32_t FORMAT_VER   = 0x00010000; // Major, Minor, Patch (1.0.0)
 
-LobbyConnection::LobbyConnection(LoggerServer *server, int socketDescriptor,
+LobbyConnection::LobbyConnection(LoggerServer *server, qintptr socketDescriptor,
     uint32_t clientID, QObject *p) : QThread(p), mServer(server),
     mClientState(NotConnected), mServerState(NotConnected),
     mClientLoginPacket(0), mClientLoginPacketSize(0), mClientSocket(0),

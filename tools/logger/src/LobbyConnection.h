@@ -53,7 +53,7 @@ public:
      * @arg clientID ID to identify this client in the log.
      * @arg parent Parent object that this object belongs to. Should remain 0.
      */
-    LobbyConnection(LoggerServer *server, int socketDescriptor,
+    LobbyConnection(LoggerServer *server, qintptr socketDescriptor,
         uint32_t clientID, QObject *parent = 0);
 
     /**
@@ -242,7 +242,7 @@ private:
     uint32_t mClientVer;
 
     /// Socket descriptior of the client connection.
-    int mSocketDescriptor;
+    qintptr mSocketDescriptor;
 
     /// Unique lobby ID of this client connection.
     uint32_t mClientID;
