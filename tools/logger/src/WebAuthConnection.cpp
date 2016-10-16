@@ -165,7 +165,7 @@ void WebAuthConnection::clientReady()
             }
 
             // Connect and negotiate an SSL connection.
-            mServerSocket->setProtocol(QSsl::TlsV1_0OrLater);
+            mServerSocket->setProtocol(QSsl::TlsV1_0);
             mServerSocket->connectToHostEncrypted(mHost,
                 (quint16)QUrl(webAuth).port(443));
             mServerSocket->waitForEncrypted();

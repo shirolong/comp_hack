@@ -129,7 +129,8 @@ void LobbyConnection::run()
         QString path = QDir(mServer->capturePath()).absoluteFilePath(filename);
 
         // Calculate the length of the client address string.
-        uint32_t addrlen = mClientAddress.toUtf8().size();
+        uint32_t addrlen = static_cast<uint32_t>(
+            mClientAddress.toUtf8().size());
 
         // Write the header to the log file.
         mCaptureLog.setFileName(path);

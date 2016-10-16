@@ -155,7 +155,8 @@ void ChannelConnection::run()
         QString path = QDir(mServer->capturePath()).absoluteFilePath(filename);
 
         // Calculate the length of the client address string.
-        uint32_t addrlen = mClientAddress.toUtf8().size();
+        uint32_t addrlen = static_cast<uint32_t>(
+            mClientAddress.toUtf8().size());
 
         // Write the header to the log file.
         mCaptureLog.setFileName(path);
@@ -488,7 +489,8 @@ void ChannelConnection::clientReady()
     if(mServerState != Encrypted)
     {
         // Save the packet.
-        mPacketBuffer.append( QByteArray(p.Data(), paddedSize + 8) );
+        mPacketBuffer.append( QByteArray(p.Data(),
+            static_cast<int>(paddedSize + 8)) );
 
         // If there is more data to read for the client, read it now.
         if(mClientSocket->bytesAvailable() >= 8)
@@ -634,8 +636,8 @@ bool ChannelConnection::packetHasServerSwitch(libcomp::Packet& p)
         return false;
 
     // Get the uncompressed and compressed size.
-    uint32_t uncompressed_size = p.ReadU32Little();
-    uint32_t compressed_size = p.ReadU32Little();
+    int32_t uncompressed_size = p.ReadS32Little();
+    int32_t compressed_size = p.ReadS32Little();
 
     // Get the compression level.
     uint32_t lv6 = p.ReadU32Big();
@@ -645,14 +647,14 @@ bool ChannelConnection::packetHasServerSwitch(libcomp::Packet& p)
         return false;
 
     // Make sure we have enough data left to decompress the entire packet.
-    if(p.Left() != (compressed_size + padding))
+    if(p.Left() != (static_cast<uint32_t>(compressed_size) + padding))
         return false;
 
     // If the compressed and uncompressed sizes differ, decompress the packet.
     if(compressed_size != uncompressed_size)
     {
         // Decompress the packet and get the uncompressed size.
-        uint32_t sz = p.Decompress(compressed_size);
+        int32_t sz = p.Decompress(compressed_size);
 
         // Check the uncompressed size matches the recorded size.
         if(sz != uncompressed_size)
@@ -689,7 +691,7 @@ bool ChannelConnection::packetHasServerSwitch(libcomp::Packet& p)
             return false;
 
         // Read the command.
-        libcomp::Packet cmd(p.Data() + cmd_start + 4, cmd_size - 4);
+        libcomp::Packet cmd(p.Data() + cmd_start + 4, cmd_size - 4u);
 
         // Check for the switch command.
         if(code == 0x0009 && cmd.ReadU32Little() == 14)
@@ -732,8 +734,8 @@ void ChannelConnection::rewriteServerSwitchPacket(libcomp::Packet& p)
         return;
 
     // Get the uncompressed and compressed size.
-    uint32_t uncompressed_size = p.ReadU32Little();
-    uint32_t compressed_size = p.ReadU32Little();
+    int32_t uncompressed_size = p.ReadS32Little();
+    int32_t compressed_size = p.ReadS32Little();
 
     // Get the compression level.
     uint32_t lv6 = p.ReadU32Big();
@@ -743,14 +745,14 @@ void ChannelConnection::rewriteServerSwitchPacket(libcomp::Packet& p)
         return;
 
     // Make sure we have enough data left to decompress the entire packet.
-    if(p.Left() != (compressed_size + padding))
+    if(p.Left() != (static_cast<uint32_t>(compressed_size) + padding))
         return;
 
     // If the compressed and uncompressed sizes differ, decompress the packet.
     if(compressed_size != uncompressed_size)
     {
         // Decompress the packet and get the uncompressed size.
-        uint32_t sz = p.Decompress(compressed_size);
+        int32_t sz = p.Decompress(compressed_size);
 
         // Check the uncompressed size matches the recorded size.
         if(sz != uncompressed_size)
@@ -793,7 +795,7 @@ void ChannelConnection::rewriteServerSwitchPacket(libcomp::Packet& p)
             return;
 
         // Read the command.
-        libcomp::Packet cmd(p.Data() + cmd_start + 4, cmd_size - 4);
+        libcomp::Packet cmd(p.Data() + cmd_start + 4, cmd_size - 4u);
 
         // Check for the switch command.
         if(code == 0x0009 && cmd.ReadU32Little() == 14)
@@ -821,8 +823,8 @@ void ChannelConnection::rewriteServerSwitchPacket(libcomp::Packet& p)
             logMessage(tr("Original address: %2").arg(origAddr.C()));
 
             // Adjust the command size.
-            uint16_t new_size = (uint16_t)(
-                cmd_size - origAddr.Length() + addr.length());
+            uint16_t new_size = (uint16_t)(cmd_size - origAddr.Length() +
+                static_cast<uint32_t>(addr.length()));
 
             // Write the new server switch command.
             packetQueue.WriteU16Big(new_size);
@@ -877,7 +879,7 @@ void ChannelConnection::rewriteServerSwitchPacket(libcomp::Packet& p)
     {
         // Seek to the data in the packet and compress the packet.
         packetQueue.Seek(24);
-        packetQueue.Compress(packetSize);
+        packetQueue.Compress(static_cast<int32_t>(packetSize));
 
         // If they are equal, this packet might be
         // confused with an uncompressed one.
@@ -996,7 +998,8 @@ void ChannelConnection::exchangeKeys()
         libcomp::Packet copy;
 
         // Write the packet.
-        copy.WriteArray(oldPacket.constData(), oldPacket.size());
+        copy.WriteArray(oldPacket.constData(), static_cast<uint32_t>(
+            oldPacket.size()));
 
         // Encrypt the packet.
         encryptPacket(&mServerCryptData.key, copy);
@@ -1070,7 +1073,7 @@ void ChannelConnection::logPacket(libcomp::Packet& p, uint8_t source)
     d.append((char*)&stamp, 8);
     d.append((char*)&micro, 8);
     d.append((char*)&size, sizeof(size));
-    d.append(p.Data(), size);
+    d.append(p.Data(), static_cast<int>(size));
 
     // Send the packet to capgrep.
     mServer->addPacket(d);

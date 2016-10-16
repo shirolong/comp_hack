@@ -67,7 +67,7 @@ protected:
      * @param socketDescriptor Operating system specific socket descriptor or
      * handle.
      */
-    virtual void incomingConnection(int socketDescriptor);
+    virtual void incomingConnection(qintptr socketDescriptor);
 
 private:
     /// The logger server that this server belongs to.
@@ -110,7 +110,7 @@ protected:
      * @param socketDescriptor Operating system specific socket descriptor or
      * handle.
      */
-    virtual void incomingConnection(int socketDescriptor);
+    virtual void incomingConnection(qintptr socketDescriptor);
 
 private:
     /// The logger server that this server belongs to.
@@ -151,7 +151,7 @@ protected:
      * @param socketDescriptor Operating system specific socket descriptor or
      * handle.
      */
-    virtual void incomingConnection(int socketDescriptor);
+    virtual void incomingConnection(qintptr socketDescriptor);
 
 private:
     /// The logger server that this server belongs to.

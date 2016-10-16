@@ -52,8 +52,8 @@ Settings::Settings(LoggerServer *server,
         this, SLOT(selectedClient()));
 
     // Load the current settings into the GUI.
-    ui.usVersion->setValue(server->usVersion() - 1000);
-    ui.jpVersion->setValue(server->jpVersion() - 1000);
+    ui.usVersion->setValue(static_cast<int32_t>(server->usVersion()) - 1000);
+    ui.jpVersion->setValue(static_cast<int32_t>(server->jpVersion()) - 1000);
 
     ui.usAddress->setText(server->usAddress());
     ui.jpAddress->setText(server->jpAddress());
@@ -90,8 +90,8 @@ Settings::Settings(LoggerServer *server,
 void Settings::saveAndClose()
 {
     // Save all the settings from the GUI.
-    mServer->setVersionUS(ui.usVersion->value() + 1000);
-    mServer->setVersionJP(ui.jpVersion->value() + 1000);
+    mServer->setVersionUS(static_cast<uint32_t>(ui.usVersion->value()) + 1000u);
+    mServer->setVersionJP(static_cast<uint32_t>(ui.jpVersion->value()) + 1000u);
 
     mServer->setAddressUS(ui.usAddress->text().trimmed());
     mServer->setAddressJP(ui.jpAddress->text().trimmed());

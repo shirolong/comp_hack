@@ -57,7 +57,7 @@ LobbyServer::~LobbyServer()
 {
 }
 
-void LobbyServer::incomingConnection(int fd)
+void LobbyServer::incomingConnection(qintptr fd)
 {
     // Create the lobby connection, ensure that the object is deleted when the
     // thread exits and start the thread. Pass the connection the next valid
@@ -79,7 +79,7 @@ ChannelServer::~ChannelServer()
 {
 }
 
-void ChannelServer::incomingConnection(int fd)
+void ChannelServer::incomingConnection(qintptr fd)
 {
     // Create the channel connection, ensure that the object is deleted when
     // the thread exits and start the thread. Pass the connection the next
@@ -102,7 +102,7 @@ WebAuthServer::~WebAuthServer()
 {
 }
 
-void WebAuthServer::incomingConnection(int fd)
+void WebAuthServer::incomingConnection(qintptr fd)
 {
     // Create the web authentication connection, ensure that the object is
     // deleted when the thread exits and start the thread.
@@ -125,10 +125,10 @@ LoggerServer::LoggerServer(QObject *p) : QObject(p)
 
     // Load the saved values for each setting or the default value if no
     // setting 
-    mVersionUS = settings.value("us/version", CLIENT_VERSION_US).toInt();
+    mVersionUS = settings.value("us/version", CLIENT_VERSION_US).toUInt();
     mAddressUS = settings.value("us/address", LOBBY_ADDRESS_US).toString();
 
-    mVersionJP = settings.value("jp/version", CLIENT_VERSION_JP).toInt();
+    mVersionJP = settings.value("jp/version", CLIENT_VERSION_JP).toUInt();
     mAddressJP = settings.value("jp/address", LOBBY_ADDRESS_JP).toString();
 
     mWebAuthJP = settings.value("jp/webauth", WEB_AUTH_URL).toString();
