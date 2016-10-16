@@ -879,6 +879,8 @@ void MainWindow::createPacketData(QList<PacketData*>& packetData,
 
         uint32_t lv6 = p.ReadU32Big();
 
+        (void)lv6;
+
         Q_ASSERT(lv6 == 0x6C763600); // lv6
 
         if(compressed_size != uncompressed_size)
