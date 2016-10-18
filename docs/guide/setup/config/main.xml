@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" 
+	"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<section>
+<title>Configuration Files</title>
+ 
+<para>There are two configuration files to worry about:
+<itemizedlist>
+	<listitem><para><emphasis role="bold">login.xml</emphasis> is used for the
+		login server</para></listitem>
+	<listitem><para><emphasis role="bold">channel.xml</emphasis> is used for
+		the channel server</para></listitem>
+</itemizedlist></para>
+<para>Note that these files can have a different name. By default, the server
+will search for this configuration file in the following location:
+<itemizedlist>
+	<listitem><para><emphasis role="bold">Windows</emphasis> - the file
+		<emphasis>login.xml</emphasis> or <emphasis>channel.xml</emphasis>
+		(depending on which server) in the current working directory</para>
+		</listitem>
+	<listitem><para><emphasis role="bold">Linux</emphasis> - the <emphasis>
+		login.xml</emphasis> or <emphasis>channel.xml</emphasis> (depending on
+		which server) in <emphasis>/etc/comp_hack</emphasis></para></listitem>
+</itemizedlist></para>
+<para>If you don’t want to use the default name and location, you can specify
+the configuration file path on the command line:</para>
+<para><code>comp_channel /path/to/my/config.xml</code></para>
+
+<xi:include href="login.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+<xi:include href="channel.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+</section>
