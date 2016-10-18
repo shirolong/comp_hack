@@ -38,7 +38,7 @@ namespace channel
 class ChannelServer : public libcomp::BaseServer
 {
 public:
-    ChannelServer(const libcomp::String& listenAddress, uint16_t port);
+    ChannelServer(std::shared_ptr<objects::ServerConfig> config, const libcomp::String& configPath);
     virtual ~ChannelServer();
 
     virtual void Shutdown();

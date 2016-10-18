@@ -38,7 +38,7 @@ namespace lobby
 class LobbyServer : public libcomp::BaseServer
 {
 public:
-    LobbyServer(const libcomp::String& listenAddress, uint16_t port);
+    LobbyServer(std::shared_ptr<objects::ServerConfig> config, const libcomp::String& configPath);
     virtual ~LobbyServer();
 
     virtual void Shutdown();

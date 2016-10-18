@@ -38,7 +38,7 @@ namespace world
 class WorldServer : public libcomp::BaseServer
 {
 public:
-    WorldServer(libcomp::String listenAddress, uint16_t port);
+    WorldServer(std::shared_ptr<objects::ServerConfig> config, const libcomp::String& configPath);
     virtual ~WorldServer();
 
 protected:

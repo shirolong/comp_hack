@@ -38,20 +38,18 @@
 
 using namespace channel;
 
-ChannelServer::ChannelServer(const libcomp::String& listenAddress,
-    uint16_t port) : libcomp::BaseServer(listenAddress, port)
+ChannelServer::ChannelServer(std::shared_ptr<objects::ServerConfig> config, const libcomp::String& configPath) :
+    libcomp::BaseServer(config, configPath)
 {
-    objects::ChannelConfig config;
-    ReadConfig(&config, "channel.xml");
-
     // Connect to the world server.
     mWorldConnection = std::shared_ptr<libcomp::InternalConnection>(
         new libcomp::InternalConnection(mService));
     mWorldConnection->SetSelf(mWorldConnection);
     mWorldConnection->SetMessageQueue(mMainWorker.GetMessageQueue());
 
-    /// @todo Load this from the config.
-    mWorldConnection->Connect("127.0.0.1", 18666, false);
+    auto conf = std::dynamic_pointer_cast<objects::ChannelConfig>(mConfig);
+
+    mWorldConnection->Connect(conf->GetWorldIP(), conf->GetWorldPort(), false);
 
     bool connected = libcomp::TcpConnection::STATUS_CONNECTED ==
         mWorldConnection->GetStatus();
