@@ -1,0 +1,25 @@
+IDI_ICON1               ICON    DISCARDABLE     "rehash.ico"
+1 VERSIONINFO
+FILEVERSION     0,0,1,1
+PRODUCTVERSION  0,0,1,1
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    BEGIN
+      VALUE "CompanyName", "COMP_hack"
+      VALUE "FileDescription", "Generates the hashlist.dat update file"
+      VALUE "FileVersion", "0.0.1.1"
+      VALUE "InternalName", "comp_rehash"
+      VALUE "LegalCopyright", "Copyright (C) 2010-2016 COMP_hack Team"
+      VALUE "OriginalFilename", "comp_rehash.exe"
+      VALUE "ProductName", "COMP_hack Rehash"
+      VALUE "ProductVersion", "0.0.1 build 1"
+    END
+  END
+
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1252
+  END
+END
