@@ -209,19 +209,19 @@ int Downloader::uncompressChunk(const void *src, void *dest,
     strm.zfree = Z_NULL;
     strm.opaque = Z_NULL;
 
-    strm.avail_in = in_size;
+    strm.avail_in = static_cast<uInt>(in_size);
     strm.next_in = (Bytef*)src;
 
     if(inflateInit(&strm) != Z_OK)
         return 0;
 
-    strm.avail_out = chunk_size;
+    strm.avail_out = static_cast<uInt>(chunk_size);
     strm.next_out = (Bytef*)dest;
 
     if(inflate(&strm, Z_FINISH) != Z_STREAM_END)
         return 0;
 
-    int written = chunk_size - strm.avail_out;
+    int written = chunk_size - static_cast<int>(strm.avail_out);
 
     if(inflateEnd(&strm) != Z_OK)
         return 0;

@@ -68,10 +68,10 @@ int compressChunk(const void *src, void *dest, int chunk_size,
         return 0;
     }
 
-    strm.avail_in = chunk_size;
+    strm.avail_in = static_cast<uInt>(chunk_size);
     strm.next_in = (Bytef*)src;
 
-    strm.avail_out = out_size;
+    strm.avail_out = static_cast<uInt>(out_size);
     strm.next_out = (Bytef*)dest;
 
     if(deflate(&strm, Z_FINISH) != Z_STREAM_END)
@@ -83,7 +83,7 @@ int compressChunk(const void *src, void *dest, int chunk_size,
         return 0;
     }
 
-    int written = out_size - strm.avail_out;
+    int written = out_size - static_cast<int>(strm.avail_out);
 
     if(deflateEnd(&strm) != Z_OK)
     {
