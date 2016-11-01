@@ -32,6 +32,9 @@
 #include "ReadOnlyPacket.h"
 #include "TcpConnection.h"
 
+// object Includes
+#include <PacketLogin.h>
+
 using namespace lobby;
 
 bool Parsers::Login::Parse(ManagerPacket *pPacketManager,
@@ -40,24 +43,19 @@ bool Parsers::Login::Parse(ManagerPacket *pPacketManager,
 {
     (void)pPacketManager;
 
-    if((uint32_t)(p.PeekU16Little() + 7) != p.Left())
+    objects::PacketLogin obj;
+
+    if(!obj.LoadPacket(p))
     {
         return false;
     }
 
-    // Read the username.
-    libcomp::String username = p.ReadString16Little(
-        libcomp::Convert::ENCODING_UTF8);
-
     // Read the client version.
-    uint32_t clientVer = p.ReadU32Little();
+    uint32_t clientVer = obj.GetClientVersion();
     uint32_t major = clientVer / 1000;
     uint32_t minor = clientVer % 1000;
 
-    // This value is unknown.
-    // p.ReadU8();
-
-    LOG_DEBUG(libcomp::String("Username: %1\n").Arg(username));
+    LOG_DEBUG(libcomp::String("Username: %1\n").Arg(obj.GetUsername()));
     LOG_DEBUG(libcomp::String("Client Version: %1.%2\n").Arg(major).Arg(minor));
 
     libcomp::Packet reply;
