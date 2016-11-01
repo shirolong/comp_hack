@@ -78,6 +78,8 @@ OBJGEN_XML(${PROJECT_NAME}_STRUCTS
     LobbyConfig.cpp
     PacketLogin.h
     PacketLogin.cpp
+    PacketResponseCode.h
+    PacketResponseCode.cpp
 )
 
 SOURCE_GROUP("Source Files\\Packets" src/packets/*)

@@ -34,6 +34,7 @@
 
 // object Includes
 #include <PacketLogin.h>
+#include <PacketResponseCode.h>
 
 using namespace lobby;
 
@@ -58,8 +59,8 @@ bool Parsers::Login::Parse(ManagerPacket *pPacketManager,
     LOG_DEBUG(libcomp::String("Username: %1\n").Arg(obj.GetUsername()));
     LOG_DEBUG(libcomp::String("Client Version: %1.%2\n").Arg(major).Arg(minor));
 
-    libcomp::Packet reply;
-    reply.WriteU16Little(0x0004);
+    objects::PacketResponseCode reply;
+    reply.SetCommandCode(0x0004);
 
     /*
      *  0   No error
@@ -89,9 +90,7 @@ bool Parsers::Login::Parse(ManagerPacket *pPacketManager,
      */
 
     // Password salt (or error code).
-    reply.WriteS32Little(0x3F5E2FB5);
+    reply.SetResponseCode(0x3F5E2FB5);
 
-    connection->SendPacket(reply);
-
-    return true;
+    return connection->SendObject(reply);
 }
