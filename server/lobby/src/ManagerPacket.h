@@ -28,7 +28,8 @@
 #define LIBCOMP_SRC_MANAGERPACKET_H
 
 // libcomp Includes
-#include "Manager.h"
+#include <BaseServer.h>
+#include <Manager.h>
 
 // Standard C++11 Includes
 #include <stdint.h>
@@ -45,7 +46,7 @@ class PacketParser;
 class ManagerPacket : public libcomp::Manager
 {
 public:
-    ManagerPacket();
+    ManagerPacket(const std::shared_ptr<libcomp::BaseServer>& server);
     virtual ~ManagerPacket();
 
     /**
@@ -58,9 +59,16 @@ public:
      */
     virtual bool ProcessMessage(const libcomp::Message::Message *pMessage);
 
-private:
+    /**
+    * Get the server this manager belongs to.
+    */
+    std::shared_ptr<libcomp::BaseServer> GetServer();
+
+protected:
     std::unordered_map<CommandCode_t,
         std::shared_ptr<PacketParser>> mPacketParsers;
+
+    std::shared_ptr<libcomp::BaseServer> mServer;
 };
 
 } // namespace lobby

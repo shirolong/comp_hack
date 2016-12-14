@@ -27,8 +27,8 @@
 #include "ManagerPacket.h"
 
 // libcomp Includes
-#include "Log.h"
-#include "MessagePacket.h"
+#include <Log.h>
+#include <MessagePacket.h>
 
 // lobby Includes
 #include "PacketParser.h"
@@ -36,26 +36,9 @@
 
 using namespace lobby;
 
-ManagerPacket::ManagerPacket()
+ManagerPacket::ManagerPacket(const std::shared_ptr<libcomp::BaseServer>& server)
+    : mServer(server)
 {
-    mPacketParsers[0x0003] = std::shared_ptr<PacketParser>(
-        new Parsers::Login());
-    mPacketParsers[0x0005] = std::shared_ptr<PacketParser>(
-        new Parsers::Auth());
-    mPacketParsers[0x0007] = std::shared_ptr<PacketParser>(
-        new Parsers::StartGame());
-    mPacketParsers[0x0009] = std::shared_ptr<PacketParser>(
-        new Parsers::CharacterList());
-    mPacketParsers[0x000B] = std::shared_ptr<PacketParser>(
-        new Parsers::WorldList());
-    mPacketParsers[0x000D] = std::shared_ptr<PacketParser>(
-        new Parsers::CreateCharacter());
-    mPacketParsers[0x000F] = std::shared_ptr<PacketParser>(
-        new Parsers::DeleteCharacter());
-    mPacketParsers[0x0011] = std::shared_ptr<PacketParser>(
-        new Parsers::QueryPurchaseTicket());
-    mPacketParsers[0x0013] = std::shared_ptr<PacketParser>(
-        new Parsers::PurchaseTicket());
 }
 
 ManagerPacket::~ManagerPacket()
@@ -102,4 +85,9 @@ bool ManagerPacket::ProcessMessage(const libcomp::Message::Message *pMessage)
     {
         return false;
     }
+}
+
+std::shared_ptr<libcomp::BaseServer> ManagerPacket::GetServer()
+{
+    return mServer;
 }

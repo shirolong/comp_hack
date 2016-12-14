@@ -1,5 +1,5 @@
 /**
- * @file server/lobby/src/packets/Login.cpp
+ * @file server/lobby/src/packets/WorldList.cpp
  * @ingroup lobby
  *
  * @author COMP Omega <compomega@tutanota.com>
@@ -27,11 +27,15 @@
 #include "Packets.h"
 
 // libcomp Includes
-#include "Decrypt.h"
-#include "Log.h"
-#include "Packet.h"
-#include "ReadOnlyPacket.h"
-#include "TcpConnection.h"
+#include <Decrypt.h>
+#include <Log.h>
+#include <Packet.h>
+#include <ReadOnlyPacket.h>
+#include <TcpConnection.h>
+
+// lobby Includes
+#include "ManagerPacket.h"
+#include "LobbyServer.h"
 
 using namespace lobby;
 
@@ -39,8 +43,6 @@ bool Parsers::WorldList::Parse(ManagerPacket *pPacketManager,
     const std::shared_ptr<libcomp::TcpConnection>& connection,
     libcomp::ReadOnlyPacket& p) const
 {
-    (void)pPacketManager;
-
     if(p.Size() != 0)
     {
         return false;
@@ -49,27 +51,37 @@ bool Parsers::WorldList::Parse(ManagerPacket *pPacketManager,
     libcomp::Packet reply;
     reply.WriteU16Little(0x000C);
 
+    auto server = std::dynamic_pointer_cast<LobbyServer>(pPacketManager->GetServer());
+
+    auto worlds = server->GetWorlds();
+
     // World count.
-    reply.WriteU8(1);
+    reply.WriteU8((uint8_t)worlds.size());
 
     // Add each world to the list.
+    for(auto world : worlds)
     {
+        auto worldDesc = world->GetWorldDescription();
+
         // ID for this world.
-        reply.WriteU8(0);
+        reply.WriteU8(worldDesc.GetID());
 
         // Name of the world.
         reply.WriteString16Little(libcomp::Convert::ENCODING_UTF8,
-            "COMP_hack", true);
+            worldDesc.GetName(), true);
+
+        auto channels = world->GetChannelDescriptions();
 
         // Number of channels on this world.
-        reply.WriteU8(1);
+        reply.WriteU8((uint8_t)channels.size());
 
         // Add each channel for this world.
+        for(auto channel : channels)
         {
             // Name of the channel. This used to be displayed in the channel
             // list that was hidden from the user.
             reply.WriteString16Little(libcomp::Convert::ENCODING_UTF8,
-                "Channel 1", true);
+                channel.GetName(), true);
 
             // Ping time??? Again, something that used to be in the list.
             reply.WriteU16Little(1);

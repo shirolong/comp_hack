@@ -31,7 +31,8 @@
 
 // channel Includes
 #include "ChannelConnection.h"
-#include "ManagerPacket.h"
+#include "ManagerPacketClient.h"
+#include "ManagerPacketInternal.h"
 
 // Object Includes
 #include "ChannelConfig.h"
@@ -42,25 +43,34 @@ ChannelServer::ChannelServer(std::shared_ptr<objects::ServerConfig> config, cons
     libcomp::BaseServer(config, configPath)
 {
     // Connect to the world server.
-    mWorldConnection = std::shared_ptr<libcomp::InternalConnection>(
+    auto worldConnection = std::shared_ptr<libcomp::InternalConnection>(
         new libcomp::InternalConnection(mService));
-    mWorldConnection->SetSelf(mWorldConnection);
-    mWorldConnection->SetMessageQueue(mMainWorker.GetMessageQueue());
+    worldConnection->SetSelf(worldConnection);
+    worldConnection->SetMessageQueue(mMainWorker.GetMessageQueue());
+
+    mManagerConnection = std::shared_ptr<ManagerConnection>(new ManagerConnection(mSelf));
+    mManagerConnection->SetWorldConnection(worldConnection);
 
     auto conf = std::dynamic_pointer_cast<objects::ChannelConfig>(mConfig);
+    mDescription.SetID(conf->GetID());
+    mDescription.SetName(conf->GetName());
 
-    mWorldConnection->Connect(conf->GetWorldIP(), conf->GetWorldPort(), false);
+    worldConnection->Connect(conf->GetWorldIP(), conf->GetWorldPort(), false);
 
     bool connected = libcomp::TcpConnection::STATUS_CONNECTED ==
-        mWorldConnection->GetStatus();
+        worldConnection->GetStatus();
 
     if(!connected)
     {
         LOG_CRITICAL("Failed to connect to the world server!\n");
     }
 
-    // Add the managers to the worker.
-    mWorker.AddManager(std::shared_ptr<libcomp::Manager>(new ManagerPacket()));
+    //Add the managers to the main worker.
+    mMainWorker.AddManager(std::shared_ptr<libcomp::Manager>(new ManagerPacketInternal(mSelf)));
+    mMainWorker.AddManager(mManagerConnection);
+
+    // Add the managers to the generic workers.
+    mWorker.AddManager(std::shared_ptr<libcomp::Manager>(new ManagerPacketClient(mSelf)));
 
     // Start the workers.
     mWorker.Start();
@@ -78,6 +88,21 @@ void ChannelServer::Shutdown()
 
     /// @todo Add more workers.
     mWorker.Shutdown();
+}
+
+objects::ChannelDescription ChannelServer::GetDescription()
+{
+    return mDescription;
+}
+
+objects::WorldDescription ChannelServer::GetWorldDescription()
+{
+    return mWorldDescription;
+}
+
+void ChannelServer::SetWorldDescription(objects::WorldDescription& worldDescription)
+{
+    mWorldDescription = worldDescription;
 }
 
 std::shared_ptr<libcomp::TcpConnection> ChannelServer::CreateConnection(

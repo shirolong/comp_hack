@@ -27,9 +27,15 @@
 #ifndef SERVER_WORLD_SRC_WORLDSERVER_H
 #define SERVER_WORLD_SRC_WORLDSERVER_H
 
+ // Standard C++11 Includes
+#include <map>
+
 // libcomp Includes
-#include <InternalConnection.h>
 #include <BaseServer.h>
+#include <ChannelDescription.h>
+#include <InternalConnection.h>
+#include <ManagerConnection.h>
+#include <WorldDescription.h>
 #include <Worker.h>
 
 namespace world
@@ -41,9 +47,28 @@ public:
     WorldServer(std::shared_ptr<objects::ServerConfig> config, const libcomp::String& configPath);
     virtual ~WorldServer();
 
+    objects::WorldDescription GetDescription();
+
+    bool GetChannelDescriptionByConnection(std::shared_ptr<libcomp::InternalConnection>& connection, objects::ChannelDescription& outChannel);
+
+    std::shared_ptr<libcomp::InternalConnection> GetLobbyConnection();
+
+    void SetChannelDescription(objects::ChannelDescription channel, std::shared_ptr<libcomp::InternalConnection>& connection);
+
+    bool RemoveChannelDescription(std::shared_ptr<libcomp::InternalConnection>& connection);
+
 protected:
     virtual std::shared_ptr<libcomp::TcpConnection> CreateConnection(
         asio::ip::tcp::socket& socket);
+
+    /// @todo Replace this with many worker threads.
+    libcomp::Worker mWorker;
+
+    objects::WorldDescription mDescription;
+
+    std::map<std::shared_ptr<libcomp::InternalConnection>, objects::ChannelDescription> mChannelDescriptions;
+
+    std::shared_ptr<ManagerConnection> mManagerConnection;
 };
 
 } // namespace world

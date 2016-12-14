@@ -25,11 +25,16 @@ MESSAGE("** Configuring ${PROJECT_NAME} **")
 FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/objgen)
 
 SET(${PROJECT_NAME}_SRCS
+    src/ManagerConnection.cpp
+    src/ManagerPacket.cpp
     src/WorldServer.cpp
     src/main.cpp
 )
 
 SET(${PROJECT_NAME}_HDRS
+    src/ManagerConnection.h
+    src/ManagerPacket.h
+    src/PacketParser.h
     src/WorldServer.h
 )
 
@@ -52,7 +57,11 @@ OBJGEN_XML(${PROJECT_NAME}_STRUCTS
     WorldConfig.cpp
 )
 
+SOURCE_GROUP("Source Files\\Packets" src/packets/*)
+
 SET(${PROJECT_NAME}_PACKETS
+    src/packets/DescribeWorld.cpp               # 0x1001
+    src/packets/SetChannelDescription.cpp               # 0x1003
 )
 
 ADD_EXECUTABLE(${PROJECT_NAME} ${${PROJECT_NAME}_SRCS}

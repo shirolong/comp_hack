@@ -30,6 +30,7 @@
 #include <InternalConnection.h>
 #include <LobbyConnection.h>
 #include <Log.h>
+#include <ManagerPacket.h>
 #include <MessageWorldNotification.h>
 
 // Object Includes
@@ -54,6 +55,8 @@ WorldServer::WorldServer(std::shared_ptr<objects::ServerConfig> config, const li
     lobbyConnection->SetMessageQueue(messageQueue);
 
     auto conf = std::dynamic_pointer_cast<objects::WorldConfig>(mConfig);
+    mDescription.SetID(conf->GetID());
+    mDescription.SetName(conf->GetName());
 
     lobbyConnection->Connect(conf->GetLobbyIP(), conf->GetLobbyPort(), false);
 
@@ -80,16 +83,69 @@ WorldServer::WorldServer(std::shared_ptr<objects::ServerConfig> config, const li
 
     delete pMessage;
 
+    mManagerConnection = std::shared_ptr<ManagerConnection>(new ManagerConnection(mSelf));
+
     lobbyConnection->Close();
     serviceThread.join();
     lobbyConnection.reset();
     messageQueue.reset();
 
-    //todo: add worker managers
+    auto connectionManager = std::shared_ptr<libcomp::Manager>(mManagerConnection);
+    auto packetManager = std::shared_ptr<libcomp::Manager>(new ManagerPacket(mSelf));
+
+    //Add the managers to the main worker.
+    mMainWorker.AddManager(packetManager);
+    mMainWorker.AddManager(connectionManager);
+
+    // Add the managers to the generic workers.
+    mWorker.AddManager(packetManager);
+    mWorker.AddManager(connectionManager);
+
+    // Start the worker.
+    mWorker.Start();
 }
 
 WorldServer::~WorldServer()
 {
+}
+
+objects::WorldDescription WorldServer::GetDescription()
+{
+    return mDescription;
+}
+
+bool WorldServer::GetChannelDescriptionByConnection(std::shared_ptr<libcomp::InternalConnection>& connection, objects::ChannelDescription& outChannel)
+{
+    auto iter = mChannelDescriptions.find(connection);
+    if(iter != mChannelDescriptions.end())
+    {
+        outChannel = iter->second;
+        return true;
+    }
+
+    return false;
+}
+
+std::shared_ptr<libcomp::InternalConnection> WorldServer::GetLobbyConnection()
+{
+    return mManagerConnection->GetLobbyConnection();
+}
+
+void WorldServer::SetChannelDescription(objects::ChannelDescription channel, std::shared_ptr<libcomp::InternalConnection>& connection)
+{
+    mChannelDescriptions[connection] = channel;
+}
+
+bool WorldServer::RemoveChannelDescription(std::shared_ptr<libcomp::InternalConnection>& connection)
+{
+    auto iter = mChannelDescriptions.find(connection);
+    if(iter != mChannelDescriptions.end())
+    {
+        mChannelDescriptions.erase(iter);
+        return true;
+    }
+
+    return false;
 }
 
 std::shared_ptr<libcomp::TcpConnection> WorldServer::CreateConnection(
@@ -101,13 +157,30 @@ std::shared_ptr<libcomp::TcpConnection> WorldServer::CreateConnection(
         )
     );
 
-    // Assign this to the only worker available.
-    std::dynamic_pointer_cast<libcomp::InternalConnection>(
-        connection)->SetMessageQueue(mMainWorker.GetMessageQueue());
-
     // Make sure this is called after connecting.
     connection->SetSelf(connection);
-    connection->ConnectionSuccess();
+
+    if(!mManagerConnection->LobbyConnected())
+    {
+        // Assign this to the main worker.
+        std::dynamic_pointer_cast<libcomp::InternalConnection>(
+            connection)->SetMessageQueue(mMainWorker.GetMessageQueue());
+
+        connection->ConnectionSuccess();
+    }
+    else if(true)  /// @todo: ensure that channels can start connecting
+    {
+        // Assign this to the only worker available.
+        std::dynamic_pointer_cast<libcomp::InternalConnection>(
+            connection)->SetMessageQueue(mWorker.GetMessageQueue());
+
+        connection->ConnectionSuccess();
+    }
+    else
+    {
+        /// @todo: send a "connection refused" error message to the client
+        connection->Close();
+    }
 
     return connection;
 }

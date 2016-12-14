@@ -27,8 +27,8 @@
 #include "ManagerPacket.h"
 
 // libcomp Includes
-#include "Log.h"
-#include "MessagePacket.h"
+#include <Log.h>
+#include <MessagePacket.h>
 
 // channel Includes
 #include "PacketParser.h"
@@ -36,10 +36,9 @@
 
 using namespace channel;
 
-ManagerPacket::ManagerPacket()
+ManagerPacket::ManagerPacket(const std::shared_ptr<libcomp::BaseServer>& server)
+    : mServer(server)
 {
-    //mPacketParsers[0x0003] = std::shared_ptr<PacketParser>(
-        //new Parsers::Login());
 }
 
 ManagerPacket::~ManagerPacket()
@@ -86,4 +85,9 @@ bool ManagerPacket::ProcessMessage(const libcomp::Message::Message *pMessage)
     {
         return false;
     }
+}
+
+std::shared_ptr<libcomp::BaseServer> ManagerPacket::GetServer()
+{
+    return mServer;
 }

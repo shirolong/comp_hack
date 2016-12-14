@@ -27,7 +27,11 @@ FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/objgen)
 SET(${PROJECT_NAME}_SRCS
     src/LobbyServer.cpp
     src/LoginWebHandler.cpp
+    src/ManagerConnection.cpp
     src/ManagerPacket.cpp
+    src/ManagerPacketClient.cpp
+    src/ManagerPacketInternal.cpp
+    src/World.cpp
     src/main.cpp
 
     ${CMAKE_CURRENT_BINARY_DIR}/res/login/ResourceLogin.c
@@ -36,8 +40,12 @@ SET(${PROJECT_NAME}_SRCS
 SET(${PROJECT_NAME}_HDRS
     src/LobbyServer.h
     src/LoginWebHandler.h
+    src/ManagerConnection.h
     src/ManagerPacket.h
+    src/ManagerPacketClient.h
+    src/ManagerPacketInternal.h
     src/PacketParser.h
+    src/World.h
 
     ${CMAKE_CURRENT_BINARY_DIR}/res/login/ResourceLogin.h
 )
@@ -77,6 +85,10 @@ SET(${PROJECT_NAME}_PACKETS
     src/packets/DeleteCharacter.cpp     # 0x000F
     src/packets/QueryPurchaseTicket.cpp # 0x0011
     src/packets/PurchaseTicket.cpp      # 0x0013
+    
+    #Internal packets
+    src/packets/SetWorldDescription.cpp      # 0x1002
+    src/packets/SetChannelDescription.cpp    # 0x1003
 )
 
 ADD_CUSTOM_COMMAND(
