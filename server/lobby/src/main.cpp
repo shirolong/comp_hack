@@ -56,7 +56,14 @@ int main(int argc, const char *argv[])
     libcomp::PersistentObject::Initialize();
 
     auto config = std::shared_ptr<objects::ServerConfig>(new objects::LobbyConfig());
-    lobby::LobbyServer server(config, configPath);
+    auto server = std::shared_ptr<lobby::LobbyServer>(new lobby::LobbyServer(config, configPath));
+    
+    auto wkServer = std::weak_ptr<libcomp::BaseServer>(server);
+    if(!server->Initialize(wkServer))
+    {
+        LOG_DEBUG("The server could not be initialized.\n");
+        return EXIT_FAILURE;
+    }
 
     std::vector<std::string> options;
     options.push_back("listening_ports");
@@ -66,10 +73,10 @@ int main(int argc, const char *argv[])
     webServer.addHandler("/", new lobby::LoginHandler);
 
     // Set this for the signal handler.
-    libcomp::Shutdown::Configure(&server);
+    libcomp::Shutdown::Configure(server.get());
 
     // Start the main server loop (blocks until done).
-    int returnCode = server.Start();
+    int returnCode = server->Start();
 
     // Complete the shutdown process.
     libcomp::Shutdown::Complete();

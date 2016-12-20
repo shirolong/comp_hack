@@ -52,13 +52,20 @@ int main(int argc, const char *argv[])
     libcomp::PersistentObject::Initialize();
 
     auto config = std::shared_ptr<objects::ServerConfig>(new objects::WorldConfig());
-    world::WorldServer server(config, configPath);
+    auto server = std::shared_ptr<world::WorldServer>(new world::WorldServer(config, configPath));
+    
+    auto wkServer = std::weak_ptr<libcomp::BaseServer>(server);
+    if(!server->Initialize(wkServer))
+    {
+        LOG_DEBUG("The server could not be initialized.\n");
+        return EXIT_FAILURE;
+    }
 
     // Set this for the signal handler.
-    libcomp::Shutdown::Configure(&server);
+    libcomp::Shutdown::Configure(server.get());
 
     // Start the main server loop (blocks until done).
-    int returnCode = server.Start();
+    int returnCode = server->Start();
 
     // Complete the shutdown process.
     libcomp::Shutdown::Complete();
