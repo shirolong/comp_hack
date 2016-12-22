@@ -67,7 +67,11 @@ int main(int argc, const char *argv[])
             configPath));
     }
 
-    libcomp::PersistentObject::Initialize();
+    if(!libcomp::PersistentObject::Initialize())
+    {
+        LOG_CRITICAL("One or more persistent object definition failed to load.\n");
+        return EXIT_FAILURE;
+    }
 
     auto config = std::shared_ptr<objects::ServerConfig>(
         new objects::LobbyConfig());
@@ -77,7 +81,7 @@ int main(int argc, const char *argv[])
 
     if(!server->Initialize(wkServer))
     {
-        LOG_DEBUG("The server could not be initialized.\n");
+        LOG_CRITICAL("The server could not be initialized.\n");
 
         return EXIT_FAILURE;
     }
