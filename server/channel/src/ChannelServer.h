@@ -45,26 +45,19 @@ public:
 
     virtual bool Initialize(std::weak_ptr<BaseServer>& self);
 
-    virtual void Shutdown();
+    const std::shared_ptr<objects::ChannelDescription> GetDescription();
 
-    objects::ChannelDescription GetDescription();
-
-    objects::WorldDescription GetWorldDescription();
-
-    void SetWorldDescription(objects::WorldDescription& worldDescription);
+    std::shared_ptr<objects::WorldDescription> GetWorldDescription();
 
 protected:
     virtual std::shared_ptr<libcomp::TcpConnection> CreateConnection(
         asio::ip::tcp::socket& socket);
 
-    /// @todo Make a bunch of these.
-    libcomp::Worker mWorker;
-
     std::shared_ptr<ManagerConnection> mManagerConnection;
 
-    objects::WorldDescription mWorldDescription;
+    std::shared_ptr<objects::WorldDescription> mWorldDescription;
 
-    objects::ChannelDescription mDescription;
+    std::shared_ptr<objects::ChannelDescription> mDescription;
 };
 
 } // namespace channel

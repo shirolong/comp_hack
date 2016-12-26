@@ -41,7 +41,9 @@
 using namespace channel;
 
 ChannelServer::ChannelServer(std::shared_ptr<objects::ServerConfig> config,
-    const libcomp::String& configPath) : libcomp::BaseServer(config, configPath)
+    const libcomp::String& configPath) : libcomp::BaseServer(config, configPath),
+    mWorldDescription(new objects::WorldDescription),
+    mDescription(new objects::ChannelDescription)
 {
 }
 
@@ -63,8 +65,11 @@ bool ChannelServer::Initialize(std::weak_ptr<BaseServer>& self)
     mManagerConnection->SetWorldConnection(worldConnection);
 
     auto conf = std::dynamic_pointer_cast<objects::ChannelConfig>(mConfig);
-    mDescription.SetID(conf->GetID());
-    mDescription.SetName(conf->GetName());
+
+    mDescription = std::shared_ptr<objects::ChannelDescription>(
+        new objects::ChannelDescription);
+    mDescription->SetID(conf->GetID());
+    mDescription->SetName(conf->GetName());
 
     worldConnection->Connect(conf->GetWorldIP(), conf->GetWorldPort(), false);
 
@@ -91,42 +96,26 @@ bool ChannelServer::Initialize(std::weak_ptr<BaseServer>& self)
     /// @todo: Add client side packet parsers
 
     // Add the managers to the generic workers.
-    mWorker.AddManager(clientPacketManager);
-
-    // Start the workers.
-    mWorker.Start();
+    for(auto worker : mWorkers)
+    {
+        worker->AddManager(clientPacketManager);
+    }
 
     return true;
 }
 
 ChannelServer::~ChannelServer()
 {
-    // Make sure the worker threads stop.
-    mWorker.Join();
 }
 
-void ChannelServer::Shutdown()
-{
-    BaseServer::Shutdown();
-
-    /// @todo Add more workers.
-    mWorker.Shutdown();
-}
-
-objects::ChannelDescription ChannelServer::GetDescription()
+const std::shared_ptr<objects::ChannelDescription> ChannelServer::GetDescription()
 {
     return mDescription;
 }
 
-objects::WorldDescription ChannelServer::GetWorldDescription()
+std::shared_ptr<objects::WorldDescription> ChannelServer::GetWorldDescription()
 {
     return mWorldDescription;
-}
-
-void ChannelServer::SetWorldDescription(
-    objects::WorldDescription& worldDescription)
-{
-    mWorldDescription = worldDescription;
 }
 
 std::shared_ptr<libcomp::TcpConnection> ChannelServer::CreateConnection(
@@ -138,13 +127,20 @@ std::shared_ptr<libcomp::TcpConnection> ChannelServer::CreateConnection(
         )
     );
 
-    // Assign this to the only worker available.
-    std::dynamic_pointer_cast<libcomp::ChannelConnection>(
-        connection)->SetMessageQueue(mWorker.GetMessageQueue());
+    auto encrypted = std::dynamic_pointer_cast<
+        libcomp::EncryptedConnection>(connection);
+    if(AssignMessageQueue(encrypted))
+    {
+        // Make sure this is called after connecting.
+        connection->SetSelf(connection);
+        connection->ConnectionSuccess();
+    }
+    else
+    {
+        connection->Close();
+        return nullptr;
+    }
 
-    // Make sure this is called after connecting.
-    connection->SetSelf(connection);
-    connection->ConnectionSuccess();
 
     return connection;
 }

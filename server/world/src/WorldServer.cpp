@@ -41,7 +41,7 @@
 using namespace world;
 
 WorldServer::WorldServer(std::shared_ptr<objects::ServerConfig> config, const libcomp::String& configPath) :
-    libcomp::BaseServer(config, configPath)
+    libcomp::BaseServer(config, configPath), mDescription(new objects::WorldDescription)
 {
 }
 
@@ -66,8 +66,8 @@ bool WorldServer::Initialize(std::weak_ptr<BaseServer>& self)
     lobbyConnection->SetMessageQueue(messageQueue);
 
     auto conf = std::dynamic_pointer_cast<objects::WorldConfig>(mConfig);
-    mDescription.SetID(conf->GetID());
-    mDescription.SetName(conf->GetName());
+    mDescription->SetID(conf->GetID());
+    mDescription->SetName(conf->GetName());
 
     lobbyConnection->Connect(conf->GetLobbyIP(), conf->GetLobbyPort(), false);
 
@@ -116,57 +116,48 @@ bool WorldServer::Initialize(std::weak_ptr<BaseServer>& self)
     mMainWorker.AddManager(connectionManager);
 
     // Add the managers to the generic workers.
-    mWorker.AddManager(packetManager);
-    mWorker.AddManager(connectionManager);
-
-    // Start the worker.
-    mWorker.Start();
+    for(auto worker : mWorkers)
+    {
+        worker->AddManager(packetManager);
+        worker->AddManager(connectionManager);
+    }
 
     return true;
 }
 
 WorldServer::~WorldServer()
 {
-    // Make sure the worker threads stop.
-    mWorker.Join();
 }
 
-void WorldServer::Shutdown()
-{
-    BaseServer::Shutdown();
-
-    /// @todo Add more workers.
-    mWorker.Shutdown();
-}
-
-objects::WorldDescription WorldServer::GetDescription()
+const std::shared_ptr<objects::WorldDescription> WorldServer::GetDescription() const
 {
     return mDescription;
 }
 
-bool WorldServer::GetChannelDescriptionByConnection(std::shared_ptr<libcomp::InternalConnection>& connection, objects::ChannelDescription& outChannel)
+std::shared_ptr<objects::ChannelDescription> WorldServer::GetChannelDescriptionByConnection(
+    const std::shared_ptr<libcomp::InternalConnection>& connection) const
 {
     auto iter = mChannelDescriptions.find(connection);
     if(iter != mChannelDescriptions.end())
     {
-        outChannel = iter->second;
-        return true;
+        return iter->second;
     }
 
-    return false;
+    return nullptr;
 }
 
-std::shared_ptr<libcomp::InternalConnection> WorldServer::GetLobbyConnection()
+const std::shared_ptr<libcomp::InternalConnection> WorldServer::GetLobbyConnection() const
 {
     return mManagerConnection->GetLobbyConnection();
 }
 
-void WorldServer::SetChannelDescription(objects::ChannelDescription channel, std::shared_ptr<libcomp::InternalConnection>& connection)
+void WorldServer::SetChannelDescription(const std::shared_ptr<objects::ChannelDescription>& channel,
+    const std::shared_ptr<libcomp::InternalConnection>& connection)
 {
     mChannelDescriptions[connection] = channel;
 }
 
-bool WorldServer::RemoveChannelDescription(std::shared_ptr<libcomp::InternalConnection>& connection)
+bool WorldServer::RemoveChannelDescription(const std::shared_ptr<libcomp::InternalConnection>& connection)
 {
     auto iter = mChannelDescriptions.find(connection);
     if(iter != mChannelDescriptions.end())
@@ -200,16 +191,23 @@ std::shared_ptr<libcomp::TcpConnection> WorldServer::CreateConnection(
     }
     else if(true)  /// @todo: ensure that channels can start connecting
     {
-        // Assign this to the only worker available.
-        std::dynamic_pointer_cast<libcomp::InternalConnection>(
-            connection)->SetMessageQueue(mWorker.GetMessageQueue());
-
-        connection->ConnectionSuccess();
+        auto encrypted = std::dynamic_pointer_cast<
+            libcomp::EncryptedConnection>(connection);
+        if(AssignMessageQueue(encrypted))
+        {
+            connection->ConnectionSuccess();
+        }
+        else
+        {
+            connection->Close();
+            return nullptr;
+        }
     }
     else
     {
         /// @todo: send a "connection refused" error message to the client
         connection->Close();
+        return nullptr;
     }
 
     return connection;

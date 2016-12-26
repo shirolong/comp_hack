@@ -49,28 +49,26 @@ public:
 
     virtual bool Initialize(std::weak_ptr<BaseServer>& self);
 
-    virtual void Shutdown();
+    const std::shared_ptr<objects::WorldDescription> GetDescription() const;
 
-    objects::WorldDescription GetDescription();
+    std::shared_ptr<objects::ChannelDescription> GetChannelDescriptionByConnection(
+        const std::shared_ptr<libcomp::InternalConnection>& connection) const;
 
-    bool GetChannelDescriptionByConnection(std::shared_ptr<libcomp::InternalConnection>& connection, objects::ChannelDescription& outChannel);
+    const std::shared_ptr<libcomp::InternalConnection> GetLobbyConnection() const;
 
-    std::shared_ptr<libcomp::InternalConnection> GetLobbyConnection();
+    void SetChannelDescription(const std::shared_ptr<objects::ChannelDescription>& channel,
+        const std::shared_ptr<libcomp::InternalConnection>& connection);
 
-    void SetChannelDescription(objects::ChannelDescription channel, std::shared_ptr<libcomp::InternalConnection>& connection);
-
-    bool RemoveChannelDescription(std::shared_ptr<libcomp::InternalConnection>& connection);
+    bool RemoveChannelDescription(const std::shared_ptr<libcomp::InternalConnection>& connection);
 
 protected:
     virtual std::shared_ptr<libcomp::TcpConnection> CreateConnection(
         asio::ip::tcp::socket& socket);
 
-    /// @todo Replace this with many worker threads.
-    libcomp::Worker mWorker;
+    std::shared_ptr<objects::WorldDescription> mDescription;
 
-    objects::WorldDescription mDescription;
-
-    std::map<std::shared_ptr<libcomp::InternalConnection>, objects::ChannelDescription> mChannelDescriptions;
+    std::map<std::shared_ptr<libcomp::InternalConnection>,
+        std::shared_ptr<objects::ChannelDescription>> mChannelDescriptions;
 
     std::shared_ptr<ManagerConnection> mManagerConnection;
 };
