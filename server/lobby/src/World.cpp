@@ -32,7 +32,8 @@
 
 using namespace lobby;
 
-World::World()
+World::World(std::shared_ptr<libcomp::InternalConnection> connection)
+    : mConnection(connection)
 {
 }
 
@@ -45,19 +46,19 @@ std::shared_ptr<libcomp::InternalConnection> World::GetConnection() const
     return mConnection;
 }
 
-void World::SetConnection(const std::shared_ptr<libcomp::InternalConnection>& connection)
+std::shared_ptr<objects::WorldDescription> World::GetWorldDescription() const
 {
-    mConnection = connection;
+    return mWorldDescription;
 }
 
-const std::list<std::shared_ptr<objects::RegisteredServer>> World::GetChannels() const
+const std::list<std::shared_ptr<objects::ChannelDescription>> World::GetChannelDescriptions() const
 {
-    return mChannels;
+    return mChannelDescriptions;
 }
 
-std::shared_ptr<objects::RegisteredServer> World::GetChannelByID(uint8_t id) const
+std::shared_ptr<objects::ChannelDescription> World::GetChannelDescriptionByID(uint8_t id) const
 {
-    for(auto channel : mChannels)
+    for(auto channel : mChannelDescriptions)
     {
         if(channel->GetID() == id)
         {
@@ -68,13 +69,13 @@ std::shared_ptr<objects::RegisteredServer> World::GetChannelByID(uint8_t id) con
     return nullptr;
 }
 
-bool World::RemoveChannelByID(uint8_t id)
+bool World::RemoveChannelDescriptionByID(uint8_t id)
 {
-    for(auto iter = mChannels.begin(); iter != mChannels.end(); iter++)
+    for(auto iter = mChannelDescriptions.begin(); iter != mChannelDescriptions.end(); iter++)
     {
         if((*iter)->GetID() == id)
         {
-            mChannels.erase(iter);
+            mChannelDescriptions.erase(iter);
             return true;
         }
     }
@@ -92,22 +93,21 @@ void World::SetWorldDatabase(const std::shared_ptr<libcomp::Database>& database)
     mDatabase = database;
 }
 
-void World::RegisterChannel(const std::shared_ptr<
-    objects::RegisteredServer>& channel)
+void World::SetWorldDescription(const std::shared_ptr<objects::WorldDescription>& worldDescription)
 {
-    auto svr = GetChannelByID(channel->GetID());
-    if(nullptr == svr)
+    mWorldDescription = worldDescription;
+}
+
+void World::SetChannelDescription(const std::shared_ptr<
+    objects::ChannelDescription>& channelDescription)
+{
+    auto desc = GetChannelDescriptionByID(channelDescription->GetID());
+    if(nullptr == desc)
     {
-        mChannels.push_back(channel);
+        mChannelDescriptions.push_back(channelDescription);
     }
-}
-
-const std::shared_ptr<objects::RegisteredServer> World::GetRegisteredServer() const
-{
-    return mRegisteredServer;
-}
-
-void World::SetRegisteredServer(const std::shared_ptr<objects::RegisteredServer>& registeredServer)
-{
-    mRegisteredServer = registeredServer;
+    else
+    {
+        desc->SetName(channelDescription->GetName());
+    }
 }

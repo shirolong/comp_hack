@@ -62,16 +62,16 @@ bool Parsers::WorldList::Parse(libcomp::ManagerPacket *pPacketManager,
     // Add each world to the list.
     for(auto world : worlds)
     {
-        auto worldServer = world->GetRegisteredServer();
+        auto worldDesc = world->GetWorldDescription();
 
         // ID for this world.
-        reply.WriteU8(worldServer->GetID());
+        reply.WriteU8(worldDesc->GetID());
 
         // Name of the world.
         reply.WriteString16Little(libcomp::Convert::ENCODING_UTF8,
-            worldServer->GetName(), true);
+            worldDesc->GetName(), true);
 
-        auto channels = world->GetChannels();
+        auto channels = world->GetChannelDescriptions();
 
         // Number of channels on this world.
         reply.WriteU8((uint8_t)channels.size());

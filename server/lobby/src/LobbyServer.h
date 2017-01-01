@@ -80,18 +80,7 @@ public:
      * @param connection Pointer to the world's connection.
      * @return Pointer to the connected world.
      */
-    std::shared_ptr<lobby::World> GetWorldByConnection(
-        std::shared_ptr<libcomp::InternalConnection> connection);
-
-    /**
-     * Register a world with the connection manager.
-     * @param world Pointer to the world to register
-     * @return Pointer to the new registered server or nullptr
-     *  on failure
-     * @sa ManagerConnection::RegisterWorld
-     */
-    const std::shared_ptr<lobby::World> RegisterWorld(
-        std::shared_ptr<lobby::World>& world);
+    std::shared_ptr<lobby::World> GetWorldByConnection(std::shared_ptr<libcomp::InternalConnection> connection);
     
     /**
      * Get the main database.
@@ -132,14 +121,6 @@ protected:
      * user entered values.
      */
     void PromptCreateAccount();
-
-    /**
-     * Reset the values in the RegisteredServer table, pulling
-     * World information from it before servers connect and
-     * removing channel servers so they populate as they start.
-     * @return true on success, false on failure
-     */
-    bool ResetRegisteredServers();
 
     /**
      * Create a connection to a newly active socket.

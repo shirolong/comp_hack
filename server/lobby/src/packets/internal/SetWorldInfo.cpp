@@ -36,6 +36,9 @@
 #include <ReadOnlyPacket.h>
 #include <TcpConnection.h>
 
+// object Includes
+#include <WorldDescription.h>
+
 // lobby Includes
 #include "LobbyServer.h"
 
@@ -45,24 +48,14 @@ bool SetWorldInfoFromPacket(libcomp::ManagerPacket *pPacketManager,
     const std::shared_ptr<libcomp::TcpConnection>& connection,
     libcomp::ReadOnlyPacket& p)
 {
-    if(p.Size() == 0)
+    auto desc = std::shared_ptr<objects::WorldDescription>(new objects::WorldDescription);
+
+    if(!desc->LoadPacket(p))
     {
-        LOG_DEBUG("World Server connection sent an empty response."
-            "  The connection will be closed.\n");
         return false;
     }
 
     auto server = std::dynamic_pointer_cast<LobbyServer>(pPacketManager->GetServer());
-    auto mainDB = server->GetMainDatabase();
-
-    auto svr = objects::RegisteredServer::LoadRegisteredServerByTypeAndID(mainDB,
-        objects::RegisteredServer::Type_t::WORLD, p.ReadU8());
-
-    if(nullptr == svr)
-    {
-        return false;
-    }
-
     auto databaseType = server->GetConfig()->GetDatabaseType();
 
     // Read the configuration for the world's database
@@ -104,14 +97,12 @@ bool SetWorldInfoFromPacket(libcomp::ManagerPacket *pPacketManager,
         return false;
     }
 
-    LOG_DEBUG(libcomp::String("Updating World Server: (%1) %2\n")
-        .Arg(svr->GetID()).Arg(svr->GetName()));
+    LOG_DEBUG(libcomp::String("Updating World Server description: (%1) %2\n")
+        .Arg(desc->GetID()).Arg(desc->GetName()));
 
     auto world = server->GetWorldByConnection(iConnection);
+    world->SetWorldDescription(desc);
     world->SetWorldDatabase(worldDatabase);
-    world->SetRegisteredServer(svr);
-
-    server->RegisterWorld(world);
 
     return true;
 }
@@ -120,7 +111,7 @@ bool Parsers::SetWorldInfo::Parse(libcomp::ManagerPacket *pPacketManager,
     const std::shared_ptr<libcomp::TcpConnection>& connection,
     libcomp::ReadOnlyPacket& p) const
 {
-    // Since this is called exactly once per world connection, if at any point
+    // Since this is called excatly once per world conncetion, if at any point
     // the packet does not parse properly, the world's connection needs to be
     // closed as it is not valid.
     if(!SetWorldInfoFromPacket(pPacketManager, connection, p))

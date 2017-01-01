@@ -71,7 +71,7 @@ bool ManagerConnection::ProcessMessage(const libcomp::Message::Message *pMessage
 
                 if(mWorldConnection == connection)
                 {
-                    RequestWorldInfo();
+                    RequestWorldDescription();
                 }
         
                 return true;
@@ -103,7 +103,7 @@ bool ManagerConnection::ProcessMessage(const libcomp::Message::Message *pMessage
     return false;
 }
 
-void ManagerConnection::RequestWorldInfo()
+void ManagerConnection::RequestWorldDescription()
 {
     if(nullptr != mWorldConnection)
     {
