@@ -88,7 +88,7 @@ bool Login::WebLogin(const libcomp::String& username,
     });
 
     asio::steady_timer timer(service);
-    timer.expires_from_now(std::chrono::seconds(1));
+    timer.expires_from_now(std::chrono::seconds(10));
     timer.async_wait([&service](asio::error_code)
     {
         service.stop();
