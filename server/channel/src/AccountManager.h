@@ -36,6 +36,18 @@ namespace channel
 class ChannelServer;
 
 /**
+ * Codes sent from the client to request a logout related action.
+ */
+enum LogoutCode_t : uint8_t
+{
+    LOGOUT_CODE_UNKNOWN_MIN = 5,
+    LOGOUT_CODE_QUIT = 6,
+    LOGOUT_CODE_CANCEL = 7,
+    LOGOUT_CODE_SWITCH = 8,
+    LOGOUT_CODE_UNKNOWN_MAX = 9,
+};
+
+/**
  * Manager to handle Account focused actions.
  */
 class AccountManager
@@ -60,16 +72,33 @@ public:
      */
     void HandleLoginRequest(const std::shared_ptr<
         channel::ChannelClientConnection>& client,
-        const libcomp::String& username, uint32_t sessionID);
+        const libcomp::String& username, uint32_t sessionKey);
 
     /**
      * Respond to the game client with the result of the login
      * request.
      * @param client Pointer to the client connection
-     * @param username Username to log in with
-     * @param sessionKey Session key to validate
      */
     void HandleLoginResponse(const std::shared_ptr<
+        channel::ChannelClientConnection>& client);
+
+    /**
+     * Handle the client's logout request.
+     * @param client Pointer to the client connection
+     * @param code Action being requested
+     * @param channel Channel to connect to after logging out.
+     * This will only be used if the the logout code is
+     * LOGOUT_CODE_SWITCH.
+     */
+    void HandleLogoutRequest(const std::shared_ptr<
+        channel::ChannelClientConnection>& client,
+        LogoutCode_t code, uint8_t channel = 0);
+
+    /**
+     * Log out a user by their connection.
+     * @param client Pointer to the client connection
+     */
+    void Logout(const std::shared_ptr<
         channel::ChannelClientConnection>& client);
 
     /**
