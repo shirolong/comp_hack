@@ -68,6 +68,7 @@ bool Parsers::CharacterList::Parse(libcomp::ManagerPacket *pPacketManager,
     reply.WriteU8(1);
 
     auto server = std::dynamic_pointer_cast<LobbyServer>(pPacketManager->GetServer());
+    auto accountManager = server->GetAccountManager();
     auto lobbyDB = server->GetMainDatabase();
     auto lobbyConnection = std::dynamic_pointer_cast<LobbyClientConnection>(connection);
     auto account = lobbyConnection->GetClientState()->GetAccount().Get();
@@ -99,13 +100,11 @@ bool Parsers::CharacterList::Parse(libcomp::ManagerPacket *pPacketManager,
     //Correct the character array if needed
     if(characters.size() > 0)
     {
-        auto accountCharacters = account->GetCharacters();
-
         bool updated = false;
         for(auto character : characters)
         {
             auto cid = character->GetCID();
-            auto existing = accountCharacters[cid].Get();
+            auto existing = account->GetCharacters(cid).Get();
             if(existing != nullptr)
             {
                 if(existing->GetUUID() != character->GetUUID())
@@ -115,18 +114,16 @@ bool Parsers::CharacterList::Parse(libcomp::ManagerPacket *pPacketManager,
                         .Arg(account->GetUUID().ToString()));
                     return false;
                 }
-                else
-                {
-                    continue;
-                }
             }
-            accountCharacters[cid] = character;
-            updated = true;
+            else
+            {
+                account->SetCharacters(cid, character);
+                updated = true;
+            }
         }
 
         if(updated)
         {
-            account->SetCharacters(accountCharacters);
             if(!account->Update(lobbyDB))
             {
                 LOG_ERROR(libcomp::String("Account character map failed to save %1\n")
@@ -135,6 +132,15 @@ bool Parsers::CharacterList::Parse(libcomp::ManagerPacket *pPacketManager,
             }
         }
     }
+
+    auto cidsToDelete = accountManager->GetCharactersForDeletion(account->GetUsername());
+
+    characters.remove_if([cidsToDelete]
+        (const std::shared_ptr<objects::Character>& character)
+        {
+            return std::find(cidsToDelete.begin(), cidsToDelete.end(), character->GetCID())
+                != cidsToDelete.end();
+        });
 
     // Number of characters.
     reply.WriteU8(static_cast<uint8_t>(characters.size()));
@@ -166,7 +172,7 @@ bool Parsers::CharacterList::Parse(libcomp::ManagerPacket *pPacketManager,
         reply.WriteS8(-1);
 
         // Level.
-        reply.WriteU8(stats->GetLevel());
+        reply.WriteS8(stats->GetLevel());
 
         // Skin type.
         reply.WriteU8(character->GetSkinType());
@@ -214,6 +220,17 @@ bool Parsers::CharacterList::Parse(libcomp::ManagerPacket *pPacketManager,
     }
 
     connection->SendPacket(reply);
+
+    for(auto cid : cidsToDelete)
+    {
+        server->QueueWork([](const libcomp::String username,
+            uint8_t c, std::shared_ptr<LobbyServer> s)
+        {
+            s->GetAccountManager()->DeleteCharacter(username,
+                c, s);
+
+        }, account->GetUsername(), cid, server);
+    }
 
     return true;
 }
