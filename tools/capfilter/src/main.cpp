@@ -457,8 +457,8 @@ class CommandFilter
 public:
     virtual ~CommandFilter();
 
-    virtual bool ProcessCommand(uint16_t commandCode,
-        libcomp::ReadOnlyPacket& packet) = 0;
+    virtual bool ProcessCommand(const libcomp::String& capturePath,
+        uint16_t commandCode, libcomp::ReadOnlyPacket& packet) = 0;
     virtual bool PostProcess() = 0;
 };
 
@@ -472,8 +472,8 @@ public:
     ZoneFilter(const char *szProgram, const libcomp::String& dataStorePath);
     virtual ~ZoneFilter();
 
-    virtual bool ProcessCommand(uint16_t commandCode,
-        libcomp::ReadOnlyPacket& packet);
+    virtual bool ProcessCommand(const libcomp::String& capturePath,
+        uint16_t commandCode, libcomp::ReadOnlyPacket& packet);
     virtual bool PostProcess();
 
 private:
@@ -517,9 +517,11 @@ ZoneFilter::~ZoneFilter()
 {
 }
 
-bool ZoneFilter::ProcessCommand(uint16_t commandCode,
-    libcomp::ReadOnlyPacket& packet)
+bool ZoneFilter::ProcessCommand(const libcomp::String& capturePath,
+    uint16_t commandCode, libcomp::ReadOnlyPacket& packet)
 {
+    (void)capturePath;
+
     if(commandCode ==
         to_underlying(ChannelToClientPacketCode_t::PACKET_ZONE_CHANGE))
     {
@@ -925,7 +927,8 @@ int main(int argc, char *argv[])
             {
                 libcomp::ReadOnlyPacket p(cmd.second);
 
-                if(!pFilter->ProcessCommand(cmd.first, p))
+                if(!pFilter->ProcessCommand(capturePath.toUtf8().constData(),
+                    cmd.first, p))
                 {
                     return EXIT_FAILURE;
                 }
