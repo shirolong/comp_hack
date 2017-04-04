@@ -378,7 +378,11 @@ void CharacterManager::SendPartnerData(const std::shared_ptr<
         return;
     }
 
-    dState->RecalculateStats(mServer.lock()->GetDefinitionManager());
+    auto server = mServer.lock();
+    auto definitionManager = server->GetDefinitionManager();
+    auto def = definitionManager->GetDevilData(d->GetType());
+
+    dState->RecalculateStats(definitionManager);
 
     auto ds = d->GetCoreStats().Get();
 
@@ -394,7 +398,7 @@ void CharacterManager::SendPartnerData(const std::shared_ptr<
     reply.WriteS16Little(ds->GetMP());
     reply.WriteS64Little(ds->GetXP());
     reply.WriteS8(ds->GetLevel());
-    reply.WriteS16Little(0x22C7); //Unknown
+    reply.WriteS16Little(def->GetBasic()->GetLNC());
 
     GetEntityStatsPacketData(reply, ds, dState, false);
 
@@ -411,7 +415,8 @@ void CharacterManager::SendPartnerData(const std::shared_ptr<
     //Learned skill count will always be static
     for(size_t i = 0; i < 8; i++)
     {
-        reply.WriteU32Little(d->GetLearnedSkills(i));
+        auto skillID = d->GetLearnedSkills(i);
+        reply.WriteU32Little(skillID == 0 ? (uint32_t)-1 : skillID);
     }
 
     size_t aSkillCount = d->AcquiredSkillsCount();
@@ -434,7 +439,7 @@ void CharacterManager::SendPartnerData(const std::shared_ptr<
     reply.WriteS64Little(-1);
     reply.WriteS64Little(-1);
 
-    auto zone = mServer.lock()->GetZoneManager()->GetZoneInstance(client);
+    auto zone = server->GetZoneManager()->GetZoneInstance(client);
     auto zoneDef = zone->GetDefinition();
 
     reply.WriteS32Little((int32_t)zone->GetID());
@@ -601,7 +606,8 @@ void CharacterManager::SendCOMPDemonData(const std::shared_ptr<
     reply.WriteS32Little(8);
     for(size_t i = 0; i < 8; i++)
     {
-        reply.WriteU32Little(d->GetLearnedSkills(i));
+        auto skillID = d->GetLearnedSkills(i);
+        reply.WriteU32Little(skillID == 0 ? (uint32_t)-1 : skillID);
     }
 
     size_t aSkillCount = d->AcquiredSkillsCount();
@@ -664,8 +670,8 @@ void CharacterManager::SendCOMPDemonData(const std::shared_ptr<
     //Characteristics panel?
     for(size_t i = 0; i < 4; i++)
     {
-        reply.WriteS64Little(0);    //Item object ID?
-        reply.WriteU32Little(0);    //Item type?
+        reply.WriteS64Little(-1);    //Item object ID?
+        reply.WriteU32Little(static_cast<uint32_t>(-1));    //Item type?
     }
 
     //Effect length in seconds remaining
@@ -1482,12 +1488,29 @@ void CharacterManager::UpdateExpertise(const std::shared_ptr<
     auto state = client->GetClientState();
     auto cState = state->GetCharacterState();
     auto character = cState->GetEntity();
+    auto stats = character->GetCoreStats();
 
     auto skill = definitionManager->GetSkillData(skillID);
     if(nullptr == skill)
     {
         LOG_WARNING(libcomp::String("Unknown skill ID encountered in"
             " UpdateExpertise: %1").Arg(skillID));
+        return;
+    }
+
+    int32_t maxTotalPoints = 1700000 + (int32_t)(floorl((float)stats->GetLevel() * 0.1) *
+        1000 * 100);
+    int32_t currentPoints = 0;
+    for(auto expertise : character->GetExpertises())
+    {
+        if(!expertise.IsNull())
+        {
+            currentPoints = currentPoints + expertise->GetPoints();
+        }
+    }
+
+    if(maxTotalPoints <= currentPoints)
+    {
         return;
     }
 
@@ -1512,13 +1535,23 @@ void CharacterManager::UpdateExpertise(const std::shared_ptr<
 
         if(points == maxPoints) continue;
 
-        // Calculate the floating point gain
+        // Calculate the point gain
         /// @todo: validate
-        float fGain = static_cast<float>(3954.482803f /
+        int32_t gain = (int32_t)((float)(3954.482803f /
             (((float)expertise->GetPoints() * 0.01f) + 158.1808409f)
-            * expertGrowth->GetGrowthRate());
+            * expertGrowth->GetGrowthRate()) * 100.f);
 
-        points += (int32_t)(fGain * 100.0f + 0.5f);
+        // Don't exceed the max total points
+        if((currentPoints + gain) > maxTotalPoints)
+        {
+            gain = maxTotalPoints - currentPoints;
+        }
+
+        if(gain <= 0) continue;
+
+        currentPoints = currentPoints + gain;
+
+        points += gain;
 
         if(points > maxPoints)
         {
