@@ -59,6 +59,7 @@ ChatManager::ChatManager(const std::weak_ptr<ChannelServer>& server)
     mGMands["lnc"] = &ChatManager::GMCommand_LNC;
     mGMands["pos"] = &ChatManager::GMCommand_Position;
     mGMands["xp"] = &ChatManager::GMCommand_XP;
+    mGMands["zone"] =&ChatManager::GMCommand_Zone;
 }
 
 ChatManager::~ChatManager()
@@ -453,6 +454,45 @@ bool ChatManager::GMCommand_Position(const std::shared_ptr<
     return SendChatMessage(client, ChatType_t::CHAT_SELF, libcomp::String(
         "Position: (%1, %2)").Arg(cState->GetDestinationX()).Arg(
         cState->GetDestinationY()));
+}
+
+bool ChatManager::GMCommand_Zone(const std::shared_ptr<
+    channel::ChannelClientConnection>& client,
+    const std::list<libcomp::String>& args)
+{
+    auto state = client->GetClientState();
+    auto cState = state->GetCharacterState();
+    auto server = mServer.lock();
+    auto zoneManager = server->GetZoneManager();
+    uint32_t zoneID = 0;
+    float xCoord = 0.00;
+    float yCoord = 0.00;
+    float rotation =0.00;
+    std::list<libcomp::String> argsCopy = args;
+
+    if(args.empty())
+    {
+        return SendChatMessage(client, ChatType_t::CHAT_SELF, libcomp::String(
+            "Error: @Zone requires at least a zoneID, or a zoneID and (x,y) coordinates."));
+    }
+    else
+    {
+        if(!GetIntegerArg<uint32_t>(zoneID, argsCopy) || !server->GetServerDataManager()->GetZoneData(zoneID))
+        {
+            return SendChatMessage(client, ChatType_t::CHAT_SELF, libcomp::String("ERROR: INVALID ZONE ID.  Please enter a proper zoneID and try again."));
+        }
+
+        zoneManager->LeaveZone(client);
+
+        if(args.size() == 3 && (!GetDecimalArg<float>(xCoord, argsCopy) || !GetDecimalArg<float>(yCoord, argsCopy)))
+        {
+            return SendChatMessage(client, ChatType_t::CHAT_SELF, libcomp::String("ERROR: One of the inputs is not a number.  Please re-enter the command with proper inputs."));
+        }
+
+        zoneManager->EnterZone(client, zoneID, xCoord, yCoord, rotation);
+        
+        return true;
+    }
 }
 
 bool ChatManager::GMCommand_XP(const std::shared_ptr<
