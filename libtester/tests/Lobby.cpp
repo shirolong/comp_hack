@@ -47,7 +47,6 @@ using namespace libcomp;
 static const libcomp::String LOGIN_USERNAME = "testalpha";
 static const libcomp::String LOGIN_PASSWORD = "same_as_my_luggage"; // 12345
 static const libcomp::String LOGIN_CLIENT_VERSION = "1.666";
-static const uint32_t CLIENT_VERSION = 1666;
 
 TEST(Lobby, WebAuth)
 {
@@ -58,71 +57,28 @@ TEST(Lobby, WebAuth)
         LOGIN_CLIENT_VERSION, sid1, sid2))
         << "Was able to authenticate with the website using bad credentials.";
 
-    ASSERT_TRUE(libtester::Login::WebLogin(LOGIN_USERNAME, LOGIN_PASSWORD,
+    EXPECT_TRUE(libtester::Login::WebLogin(LOGIN_USERNAME, LOGIN_PASSWORD,
         LOGIN_CLIENT_VERSION, sid1, sid2))
         << "Failed to authenticate with the website.";
+
+    EXPECT_FALSE(libtester::Login::WebLogin(LOGIN_USERNAME, LOGIN_PASSWORD,
+        "1.001", sid1, sid2))
+        << "Was able to authenticate with a bad client version.";
+}
+
+TEST(Lobby, BadClientVersion)
+{
+    std::shared_ptr<libtester::LobbyClient> client(new libtester::LobbyClient);
+
+    client->Login(LOGIN_USERNAME, LOGIN_PASSWORD,
+        ErrorCodes_t::WRONG_CLIENT_VERSION, ErrorCodes_t::SUCCESS, 1);
 }
 
 TEST(Lobby, BadUsername)
 {
-    //libcomp::Log::GetSingletonPtr()->AddStandardOutputHook();
-
-    double waitTime;
-
     std::shared_ptr<libtester::LobbyClient> client(new libtester::LobbyClient);
 
-    ASSERT_TRUE(client->Connect());
-    ASSERT_TRUE(client->WaitEncrypted(waitTime));
-
-    objects::PacketLogin obj;
-    obj.SetClientVersion(CLIENT_VERSION);
-    obj.SetUsername("h@k3r");
-
-    libcomp::Packet p;
-    p.WritePacketCode(ClientToLobbyPacketCode_t::PACKET_LOGIN);
-
-    ASSERT_TRUE(obj.SavePacket(p));
-
-    libcomp::ReadOnlyPacket reply;
-
-    client->ClearMessages();
-    client->GetConnection()->SendPacket(p);
-
-    ASSERT_TRUE(client->WaitForPacket(
-        LobbyToClientPacketCode_t::PACKET_LOGIN, reply, waitTime));
-    ASSERT_EQ(reply.ReadS32Little(),
-        to_underlying(ErrorCodes_t::BAD_USERNAME_PASSWORD));
-}
-
-TEST(Lobby, GoodUsername)
-{
-    //libcomp::Log::GetSingletonPtr()->AddStandardOutputHook();
-
-    double waitTime;
-
-    std::shared_ptr<libtester::LobbyClient> client(new libtester::LobbyClient);
-
-    ASSERT_TRUE(client->Connect());
-    ASSERT_TRUE(client->WaitEncrypted(waitTime));
-
-    objects::PacketLogin obj;
-    obj.SetClientVersion(CLIENT_VERSION);
-    obj.SetUsername(LOGIN_USERNAME);
-
-    libcomp::Packet p;
-    p.WritePacketCode(ClientToLobbyPacketCode_t::PACKET_LOGIN);
-
-    ASSERT_TRUE(obj.SavePacket(p));
-
-    libcomp::ReadOnlyPacket reply;
-
-    client->ClearMessages();
-    client->GetConnection()->SendPacket(p);
-
-    ASSERT_TRUE(client->WaitForPacket(
-        LobbyToClientPacketCode_t::PACKET_LOGIN, reply, waitTime));
-    ASSERT_EQ(reply.ReadS32Little(),
-        to_underlying(ErrorCodes_t::SUCCESS));
+    client->Login("h@k3r", LOGIN_PASSWORD, ErrorCodes_t::BAD_USERNAME_PASSWORD);
 }
 
 TEST(Lobby, BadSID)
@@ -139,200 +95,31 @@ TEST(Lobby, BadSID)
         "000000000000000000000000000000"
         "000000000000000000000000000000";
 
-    double waitTime;
-
     std::shared_ptr<libtester::LobbyClient> client(new libtester::LobbyClient);
 
-    ASSERT_TRUE(client->Connect());
-    ASSERT_TRUE(client->WaitEncrypted(waitTime));
-
-    objects::PacketLogin obj;
-    obj.SetClientVersion(CLIENT_VERSION);
-    obj.SetUsername(LOGIN_USERNAME);
-
-    libcomp::Packet p;
-    p.WritePacketCode(ClientToLobbyPacketCode_t::PACKET_LOGIN);
-
-    ASSERT_TRUE(obj.SavePacket(p));
-
-    libcomp::ReadOnlyPacket reply;
-
-    client->ClearMessages();
-    client->GetConnection()->SendPacket(p);
-
-    ASSERT_TRUE(client->WaitForPacket(
-        LobbyToClientPacketCode_t::PACKET_LOGIN, reply, waitTime));
-    ASSERT_EQ(reply.ReadS32Little(),
-        to_underlying(ErrorCodes_t::SUCCESS));
-
-    p.Clear();
-    p.WritePacketCode(ClientToLobbyPacketCode_t::PACKET_AUTH);
-    p.WriteString16Little(Convert::ENCODING_UTF8, sid1, true);
-
-    client->ClearMessages();
-    client->GetConnection()->SendPacket(p);
-
-    ASSERT_TRUE(client->WaitForPacket(
-        LobbyToClientPacketCode_t::PACKET_AUTH, reply, waitTime));
-    ASSERT_EQ(reply.ReadS32Little(),
-        to_underlying(ErrorCodes_t::BAD_USERNAME_PASSWORD));
+    client->WebLogin(LOGIN_USERNAME, LOGIN_PASSWORD, sid1);
 }
 
 TEST(Lobby, GoodSID)
 {
-    libcomp::String sid1;
-    libcomp::String sid2;
-
-    ASSERT_TRUE(libtester::Login::WebLogin(LOGIN_USERNAME, LOGIN_PASSWORD,
-        LOGIN_CLIENT_VERSION, sid1, sid2))
-        << "Failed to authenticate with the website.";
-
-    double waitTime;
-
     std::shared_ptr<libtester::LobbyClient> client(new libtester::LobbyClient);
 
-    ASSERT_TRUE(client->Connect());
-    ASSERT_TRUE(client->WaitEncrypted(waitTime));
-
-    objects::PacketLogin obj;
-    obj.SetClientVersion(CLIENT_VERSION);
-    obj.SetUsername(LOGIN_USERNAME);
-
-    libcomp::Packet p;
-    p.WritePacketCode(ClientToLobbyPacketCode_t::PACKET_LOGIN);
-
-    ASSERT_TRUE(obj.SavePacket(p));
-
-    libcomp::ReadOnlyPacket reply;
-
-    client->ClearMessages();
-    client->GetConnection()->SendPacket(p);
-
-    ASSERT_TRUE(client->WaitForPacket(
-        LobbyToClientPacketCode_t::PACKET_LOGIN, reply, waitTime));
-    ASSERT_EQ(reply.ReadS32Little(),
-        to_underlying(ErrorCodes_t::SUCCESS));
-
-    p.Clear();
-    p.WritePacketCode(ClientToLobbyPacketCode_t::PACKET_AUTH);
-    p.WriteString16Little(Convert::ENCODING_UTF8, sid1, true);
-
-    client->ClearMessages();
-    client->GetConnection()->SendPacket(p);
-
-    ASSERT_TRUE(client->WaitForPacket(
-        LobbyToClientPacketCode_t::PACKET_AUTH, reply, waitTime));
-    ASSERT_EQ(reply.ReadS32Little(),
-        to_underlying(ErrorCodes_t::SUCCESS));
-    ASSERT_EQ(reply.ReadString16Little(
-        Convert::ENCODING_UTF8, true).Length(), 300);
+    client->WebLogin(LOGIN_USERNAME, LOGIN_PASSWORD);
 }
 
 TEST(Lobby, BadPassword)
 {
-    double waitTime;
-
     std::shared_ptr<libtester::LobbyClient> client(new libtester::LobbyClient);
 
-    ASSERT_TRUE(client->Connect());
-    ASSERT_TRUE(client->WaitEncrypted(waitTime));
-
-    objects::PacketLogin obj;
-    obj.SetClientVersion(CLIENT_VERSION);
-    obj.SetUsername(LOGIN_USERNAME);
-
-    libcomp::Packet p;
-    p.WritePacketCode(ClientToLobbyPacketCode_t::PACKET_LOGIN);
-
-    ASSERT_TRUE(obj.SavePacket(p));
-
-    libcomp::ReadOnlyPacket reply;
-
-    client->ClearMessages();
-    client->GetConnection()->SendPacket(p);
-
-    ASSERT_TRUE(client->WaitForPacket(
-        LobbyToClientPacketCode_t::PACKET_LOGIN, reply, waitTime));
-    ASSERT_EQ(reply.Left(), sizeof(int32_t) + sizeof(uint32_t) +
-        sizeof(uint16_t) + 5 * 2);
-    ASSERT_EQ(reply.ReadS32Little(),
-        to_underlying(ErrorCodes_t::SUCCESS));
-
-    uint32_t challenge = reply.ReadU32Little();
-
-    ASSERT_NE(challenge, 0);
-
-    libcomp::String salt = reply.ReadString16Little(Convert::ENCODING_UTF8);
-
-    ASSERT_EQ(salt.Length(), 10);
-
-    p.Clear();
-    p.WritePacketCode(ClientToLobbyPacketCode_t::PACKET_AUTH);
-    p.WriteString16Little(Convert::ENCODING_UTF8, Decrypt::HashPassword(
-        "letMeInAnyway", salt), true);
-
-    client->ClearMessages();
-    client->GetConnection()->SendPacket(p);
-
-    ASSERT_TRUE(client->WaitForPacket(
-        LobbyToClientPacketCode_t::PACKET_AUTH, reply, waitTime));
-    ASSERT_EQ(reply.ReadS32Little(),
-        to_underlying(ErrorCodes_t::BAD_USERNAME_PASSWORD));
-    ASSERT_EQ(reply.Left(), 0);
+    client->Login(LOGIN_USERNAME, "letMeInAnyway",
+        ErrorCodes_t::SUCCESS, ErrorCodes_t::BAD_USERNAME_PASSWORD);
 }
 
 TEST(Lobby, GoodPassword)
 {
-    double waitTime;
-
     std::shared_ptr<libtester::LobbyClient> client(new libtester::LobbyClient);
 
-    ASSERT_TRUE(client->Connect());
-    ASSERT_TRUE(client->WaitEncrypted(waitTime));
-
-    objects::PacketLogin obj;
-    obj.SetClientVersion(CLIENT_VERSION);
-    obj.SetUsername(LOGIN_USERNAME);
-
-    libcomp::Packet p;
-    p.WritePacketCode(ClientToLobbyPacketCode_t::PACKET_LOGIN);
-
-    ASSERT_TRUE(obj.SavePacket(p));
-
-    libcomp::ReadOnlyPacket reply;
-
-    client->ClearMessages();
-    client->GetConnection()->SendPacket(p);
-
-    ASSERT_TRUE(client->WaitForPacket(
-        LobbyToClientPacketCode_t::PACKET_LOGIN, reply, waitTime));
-    ASSERT_EQ(reply.Left(), sizeof(int32_t) + sizeof(uint32_t) +
-        sizeof(uint16_t) + 5 * 2);
-    ASSERT_EQ(reply.ReadS32Little(),
-        to_underlying(ErrorCodes_t::SUCCESS));
-
-    uint32_t challenge = reply.ReadU32Little();
-
-    ASSERT_NE(challenge, 0);
-
-    libcomp::String salt = reply.ReadString16Little(Convert::ENCODING_UTF8);
-
-    ASSERT_EQ(salt.Length(), 10);
-
-    p.Clear();
-    p.WritePacketCode(ClientToLobbyPacketCode_t::PACKET_AUTH);
-    p.WriteString16Little(Convert::ENCODING_UTF8, Decrypt::HashPassword(
-        LOGIN_PASSWORD, salt), true);
-
-    client->ClearMessages();
-    client->GetConnection()->SendPacket(p);
-
-    ASSERT_TRUE(client->WaitForPacket(
-        LobbyToClientPacketCode_t::PACKET_AUTH, reply, waitTime));
-    ASSERT_EQ(reply.ReadS32Little(),
-        to_underlying(ErrorCodes_t::SUCCESS));
-    ASSERT_EQ(reply.ReadString16Little(
-        Convert::ENCODING_UTF8, true).Length(), 300);
+    client->Login(LOGIN_USERNAME, LOGIN_PASSWORD);
 }
 
 int main(int argc, char *argv[])

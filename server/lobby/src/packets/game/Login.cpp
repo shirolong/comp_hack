@@ -44,6 +44,19 @@
 
 using namespace lobby;
 
+static bool LoginError(const std::shared_ptr<
+    libcomp::TcpConnection>& connection, ErrorCodes_t errorCode)
+{
+    /// @todo Return different error codes like an account is banned.
+    libcomp::Packet reply;
+    reply.WritePacketCode(LobbyToClientPacketCode_t::PACKET_LOGIN);
+    reply.WriteS32Little(to_underlying(errorCode));
+
+    connection->SendPacket(reply);
+
+    return true;
+}
+
 bool Parsers::Login::Parse(libcomp::ManagerPacket *pPacketManager,
     const std::shared_ptr<libcomp::TcpConnection>& connection,
     libcomp::ReadOnlyPacket& p) const
@@ -75,13 +88,11 @@ bool Parsers::Login::Parse(libcomp::ManagerPacket *pPacketManager,
 
     if(clientVersion != obj.GetClientVersion())
     {
-        reply.SetResponseCode(to_underlying(
-            ErrorCodes_t::WRONG_CLIENT_VERSION));
+        return LoginError(connection, ErrorCodes_t::WRONG_CLIENT_VERSION);
     }
     else if(nullptr == account)
     {
-        reply.SetResponseCode(to_underlying(
-            ErrorCodes_t::BAD_USERNAME_PASSWORD));
+        return LoginError(connection, ErrorCodes_t::BAD_USERNAME_PASSWORD);
     }
     else
     {

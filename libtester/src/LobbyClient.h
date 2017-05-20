@@ -28,6 +28,7 @@
 #define LIBTESTER_SRC_LOBBYCLIENT_H
 
 // libcomp Includes
+#include <ErrorCodes.h>
 #include <LobbyConnection.h>
 #include <PacketCodes.h>
 
@@ -73,6 +74,14 @@ public:
 
     std::shared_ptr<libcomp::LobbyConnection> GetConnection();
 
+    void Login(const libcomp::String& username,
+        const libcomp::String& password, ErrorCodes_t loginErrorCode =
+            ErrorCodes_t::SUCCESS, ErrorCodes_t authErrorCode =
+            ErrorCodes_t::SUCCESS, uint32_t clientVersion = 0);
+    void WebLogin(const libcomp::String& username,
+        const libcomp::String& password = libcomp::String(),
+        const libcomp::String& sid = libcomp::String());
+
 private:
     bool HasDisconnectOrTimeout();
 
@@ -85,6 +94,8 @@ private:
         libcomp::Message::Message*>> mMessageQueue;
 
     MessageList mReceivedMessages;
+
+    libcomp::String mSID1, mSID2;
 };
 
 } // namespace libtester
