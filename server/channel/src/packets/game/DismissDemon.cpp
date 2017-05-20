@@ -74,13 +74,6 @@ void DemonDismiss(const std::shared_ptr<ChannelServer> server,
 
     character->SetCOMP((size_t)slot, NULLUUID);
 
-    auto db = server->GetWorldDatabase();
-    if(!character->Update(db) || !demon->GetCoreStats()->Delete(db) ||
-        !demon->Delete(db))
-    {
-        return;
-    }
-
     libcomp::Packet reply;
     reply.WritePacketCode(ChannelToClientPacketCode_t::PACKET_COMP_SLOT_UPDATED);
     reply.WriteS8(0);   //Unknown
@@ -90,6 +83,12 @@ void DemonDismiss(const std::shared_ptr<ChannelServer> server,
     reply.WriteS8(10);   //Total COMP slots
 
     client->SendPacket(reply);
+
+    auto dbChanges = libcomp::DatabaseChangeSet::Create(state->GetAccountUID());
+    dbChanges->Update(character);
+    dbChanges->Delete(demon->GetCoreStats().Get());
+    dbChanges->Delete(demon);
+    server->GetWorldDatabase()->QueueChangeSet(dbChanges);
 }
 
 bool Parsers::DismissDemon::Parse(libcomp::ManagerPacket *pPacketManager,

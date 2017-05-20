@@ -29,6 +29,8 @@
 // libcomp Includes
 #include <Log.h>
 #include <ManagerPacket.h>
+#include <ManagerSystem.h>
+#include <MessageTick.h>
 #include <PacketCodes.h>
 
 // channel Includes
@@ -36,6 +38,7 @@
 #include "Packets.h"
 
 // Object Includes
+#include "Account.h"
 #include "ChannelConfig.h"
 
 using namespace channel;
@@ -100,6 +103,10 @@ bool ChannelServer::Initialize()
     //Add the managers to the main worker.
     mMainWorker.AddManager(internalPacketManager);
     mMainWorker.AddManager(mManagerConnection);
+
+    //Add managers to the queue worker.
+    auto systemManager = std::make_shared<channel::ManagerSystem>(self);
+    mQueueWorker.AddManager(systemManager);
 
     auto clientPacketManager = std::make_shared<libcomp::ManagerPacket>(self);
     clientPacketManager->AddParser<Parsers::Login>(
@@ -197,6 +204,11 @@ bool ChannelServer::Initialize()
 
 ChannelServer::~ChannelServer()
 {
+    if(mTickThread.joinable())
+    {
+        mTickThread.join();
+    }
+
     delete[] mAccountManager;
     delete[] mCharacterManager;
     delete[] mChatManager;
@@ -351,6 +363,47 @@ int64_t ChannelServer::GetNextObjectID()
     return ++mMaxObjectID;
 }
 
+void ChannelServer::Tick()
+{
+    /// @todo: check/update server time
+
+    /// @todo: update zone states
+
+    // Process queued world database changes
+    auto worldFailures = mWorldDatabase->ProcessTransactionQueue();
+
+    // Process queued lobby database changes
+    auto lobbyFailures = mLobbyDatabase->ProcessTransactionQueue();
+
+    if(worldFailures.size() > 0 || lobbyFailures.size() > 0)
+    {
+        // Disconnect any clients associated to failed account updates
+        for(auto failures : { worldFailures, lobbyFailures })
+        {
+            for(auto failedUUID : failures)
+            {
+                auto account = std::dynamic_pointer_cast<objects::Account>(
+                    libcomp::PersistentObject::GetObjectByUUID(failedUUID));
+
+                if(nullptr != account)
+                {
+                    auto username = account->GetUsername();
+                    auto client = mManagerConnection->GetClientConnection(
+                        username);
+                    if(nullptr != client)
+                    {
+                        LOG_ERROR(libcomp::String("Queued updates for client"
+                            " failed to save for account: %1\n").Arg(username));
+                        client->Close();
+                    }
+                }
+            }
+        }
+    }
+
+    QueueNextTick();
+}
+
 std::shared_ptr<libcomp::TcpConnection> ChannelServer::CreateConnection(
     asio::ip::tcp::socket& socket)
 {
@@ -390,4 +443,20 @@ ServerTime ChannelServer::GetServerTimeHighResolution()
     auto now = std::chrono::high_resolution_clock::now();
     return (ServerTime)std::chrono::time_point_cast<std::chrono::microseconds>(now)
         .time_since_epoch().count();
+}
+
+void ChannelServer::QueueNextTick()
+{
+    if(mTickThread.joinable())
+    {
+        mTickThread.join();
+    }
+    
+    mTickThread = std::thread([this](std::shared_ptr<
+        libcomp::MessageQueue<libcomp::Message::Message*>> queue)
+    {
+        const static int tickDelta = 100;
+        std::this_thread::sleep_for(std::chrono::milliseconds(tickDelta));
+        queue->Enqueue(new libcomp::Message::Tick);
+    }, mQueueWorker.GetMessageQueue());
 }
