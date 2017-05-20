@@ -73,22 +73,18 @@ void MoveItem(const std::shared_ptr<ChannelClientConnection>& client,
     destBox->SetItems(destSlot, item);
     sourceBox->SetItems(sourceSlot, otherItem);
 
-    auto db = server->GetWorldDatabase();
+    auto dbChanges = libcomp::DatabaseChangeSet::Create(state->GetAccountUID());
+    dbChanges->Update(item);
+    dbChanges->Update(destBox);
+    dbChanges->Update(sourceBox);
 
-    // Save the item boxes.
-    bool dbWrite = destBox->Update(db);
-
-    if(destBox.get() != sourceBox.get())
+    if(!otherItem.IsNull())
     {
-        dbWrite &= sourceBox->Update(db);
+        otherItem->SetBoxSlot((int8_t)sourceSlot);
+        dbChanges->Update(otherItem.Get());
     }
 
-    if(!dbWrite)
-    {
-        LOG_ERROR(libcomp::String("Save failed during item move operation "
-            "which may have resulted in invalid item data for character: %1\n")
-            .Arg(character->GetUUID().ToString()));
-    }
+    server->GetWorldDatabase()->QueueChangeSet(dbChanges);
 }
 
 bool Parsers::ItemMove::Parse(libcomp::ManagerPacket *pPacketManager,

@@ -206,6 +206,13 @@ public:
      */
     int64_t GetNextObjectID();
 
+    /**
+     * Simulate a server tick, handling events like updating
+     * the server time and zone states as well as ansynchronously
+     * saving data.
+     */
+    void Tick();
+
 protected:
     /**
      * Create a connection to a newly active socket.
@@ -228,6 +235,12 @@ protected:
      * @return Current time relative to the server
      */
     static ServerTime GetServerTimeHighResolution();
+
+    /**
+     * Queues up a time based event to insert a system message
+     * that triggers a server tick.
+     */
+    void QueueNextTick();
 
     /// Function pointer to the most accurate time detection code
     /// available for the current machine.
@@ -277,6 +290,9 @@ protected:
 
     /// Highest unique object ID currently assigned
     int64_t mMaxObjectID;
+
+    /// Thread that queues up tick messages after a delay.
+    std::thread mTickThread;
 
     /// Server lock for shared resources
     std::mutex mLock;

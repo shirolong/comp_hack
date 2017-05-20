@@ -96,6 +96,11 @@ void AllocatePoint(const std::shared_ptr<ChannelServer> server,
     reply.WriteS32Little(pointCost);
 
     client->SendPacket(reply);
+
+    auto dbChanges = libcomp::DatabaseChangeSet::Create(state->GetAccountUID());
+    dbChanges->Update(character);
+    dbChanges->Update(stats);
+    server->GetWorldDatabase()->QueueChangeSet(dbChanges);
 }
 
 bool Parsers::AllocateSkillPoint::Parse(libcomp::ManagerPacket *pPacketManager,
