@@ -28,13 +28,16 @@
 
 #include <iostream>
 
-#include "Child.h"
-#include "DayCare.h"
+// libcomp Includes
+#include <Child.h>
+#include <DayCare.h>
 
-using namespace manager;
+using namespace libcomp;
 
 static DayCare *gDayCare = nullptr;
 static volatile bool gTerm = false;
+
+extern pthread_t gSelf;
 
 void SignalHandler(int signum)
 {
@@ -50,6 +53,13 @@ void SignalHandler(int signum)
             {
                 gDayCare->PrintStatus();
             }
+            break;
+        }
+        case SIGUSR2:
+        {
+            printf("Got SIGUSR2. Server has started.\n");
+            pthread_kill(gSelf, SIGUSR2);
+
             break;
         }
         case SIGINT:
@@ -92,12 +102,23 @@ void SignalHandler(int signum)
 
 int main(int argc, char *argv[])
 {
-    (void)argc;
-    (void)argv;
-
     signal(SIGUSR1, SignalHandler);
+    signal(SIGUSR2, SignalHandler);
     signal(SIGTERM, SignalHandler);
     signal(SIGINT, SignalHandler);
+
+    const char *szProgramsXml = "programs.xml";
+
+    if(2 == argc)
+    {
+        szProgramsXml = argv[1];
+    }
+    else if(1 != argc)
+    {
+        fprintf(stderr, "USAGE: %s [PATH]\n", argv[0]);
+
+        return EXIT_FAILURE;
+    }
 
     printf("Manager started with PID %d\n", getpid());
 
@@ -105,7 +126,7 @@ int main(int argc, char *argv[])
     {
         DayCare juvy;
 
-        if(!juvy.DetainMonsters("programs.xml"))
+        if(!juvy.DetainMonsters(szProgramsXml))
         {
             fprintf(stderr, "Failed to load programs XML.\n");
 

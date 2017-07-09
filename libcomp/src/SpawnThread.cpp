@@ -1,12 +1,12 @@
 /**
- * @file tools/manager/src/SpawnThread.cpp
- * @ingroup tools
+ * @file libcomp/src/SpawnThread.cpp
+ * @ingroup libcomp
  *
  * @author COMP Omega <compomega@tutanota.com>
  *
  * @brief Thread to spawn new child processes.
  *
- * This tool will spawn and manage server processes.
+ * This file is part of the COMP_hack Library (libcomp).
  *
  * Copyright (C) 2012-2017 COMP_hack Team <compomega@tutanota.com>
  *
@@ -27,9 +27,15 @@
 #include "SpawnThread.h"
 #include "DayCare.h"
 
-using namespace manager;
+#include <signal.h>
 
-SpawnThread::SpawnThread(DayCare *pJuvy) : mDayCare(pJuvy)
+using namespace libcomp;
+
+pthread_t gSelf;
+
+SpawnThread::SpawnThread(DayCare *pJuvy, bool printDetails,
+    std::function<void()> onDetain) : mPrintDetails(printDetails),
+    mDayCare(pJuvy), mOnDetain(onDetain)
 {
     mThread = new std::thread([](SpawnThread *pThread){
         pThread->Run();
@@ -60,7 +66,9 @@ void SpawnThread::QueueChild(const std::shared_ptr<Child>& child)
 void SpawnThread::Run()
 {
     bool running = true;
-   
+
+    gSelf = pthread_self();
+
     while(running)
     {
         std::list<std::shared_ptr<Child>> children;
@@ -80,16 +88,31 @@ void SpawnThread::Run()
         {
             for(auto child : children)
             {
-                if(child->Start())
-                {
-                    printf("Started with PID %d: %s\n", child->GetPID(),
-                        child->GetCommandLine().c_str());
+                int timeout = child->GetBootTimeout();
 
-                    int timeout = child->GetBootTimeout();
+                if(child->Start(0 == timeout))
+                {
+                    if(mPrintDetails)
+                    {
+                        printf("Started with PID %d: %s\n", child->GetPID(),
+                            child->GetCommandLine().c_str());
+                    }
 
                     if(0 != timeout)
                     {
                         usleep((uint32_t)(timeout * 1000));
+                    }
+                    else
+                    {
+                        sigset_t set;
+                        int sig;
+
+                        sigemptyset(&set);
+                        sigaddset(&set, SIGUSR2);
+
+                        pthread_sigmask(SIG_BLOCK, &set, NULL);
+                        sigwait(&set, &sig);
+                        pthread_sigmask(SIG_UNBLOCK, &set, NULL);
                     }
                 }
                 else
@@ -97,6 +120,11 @@ void SpawnThread::Run()
                     printf("Failed to start: %s\n",
                         child->GetCommandLine().c_str());
                 }
+            }
+
+            if(mOnDetain)
+            {
+                mOnDetain();
             }
         }
     }
