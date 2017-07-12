@@ -694,3 +694,23 @@ void ChannelServer::QueueNextTick()
         queue->Enqueue(new libcomp::Message::Tick);
     }, mQueueWorker.GetMessageQueue());
 }
+
+bool ChannelServer::SendSystemMessage(const std::shared_ptr<
+    channel::ChannelClientConnection>& client,
+    libcomp::String message, int8_t color, bool sendToAll)
+{
+    libcomp::Packet p;
+    p.WritePacketCode(ChannelToClientPacketCode_t::PACKET_SYSTEM_MSG);
+    p.WriteS8(color);
+    p.WriteS8(0); // Unknown for now, possibly speed?
+    p.WriteString16Little(libcomp::Convert::Encoding_t::ENCODING_CP932, message, true);
+
+    if(!sendToAll) {
+        client->SendPacket(p);
+        return true;
+    } else {
+        mZoneManager->BroadcastPacket(client,p);
+        return true;
+    }
+    return false;
+}

@@ -108,6 +108,17 @@ public:
         const std::list<libcomp::String>& args);
 
 private:
+
+    /**
+     * GM command to announce message to server .
+     * @param client Pointer to the client that sent the command
+     * @param args List of arguments for the command
+     * @return true if the command was handled properly, else false
+     */
+    bool GMCommand_Announce(const std::shared_ptr<
+        channel::ChannelClientConnection>& client,
+        const std::list<libcomp::String>& args);
+
     /**
      * GM command to add a demon to a character's COMP.
      * @param client Pointer to the client that sent the command
@@ -254,6 +265,16 @@ private:
         const std::list<libcomp::String>& args);
 
     /**
+     * GM command to set the default ticker message upon login
+     * @param client Pointer to the client that sent the command
+     * @param args List of arguments for the command
+     * @return true if the command was handled problerly, else false
+     */
+    bool GMCommand_TickerMessage(const std::shared_ptr<
+        channel::ChannelClientConnection>& client,
+        const std::list<libcomp::String>& args);
+
+    /**
      * GM command to print the server version.
      * @param client Pointer to the client that sent the command
      * @param args List of arguments for the command
@@ -270,8 +291,8 @@ private:
      * @return true if the command was handled properly, else false
      */
     bool GMCommand_Zone(const std::shared_ptr<
-    channel::ChannelClientConnection>& client,
-    const std::list<libcomp::String>& args);
+        channel::ChannelClientConnection>& client,
+        const std::list<libcomp::String>& args);
 
     /**
      * GM command to increase the XP of a character or demon.
