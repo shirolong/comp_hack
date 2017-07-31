@@ -32,6 +32,7 @@
 #include <ServerConstants.h>
 
 // object Includes
+#include <Account.h>
 #include <AccountLogin.h>
 #include <Character.h>
 #include <MiItemData.h>
@@ -58,6 +59,7 @@ ChatManager::ChatManager(const std::weak_ptr<ChannelServer>& server)
     : mServer(server)
 {
     mGMands["announce"] = &ChatManager::GMCommand_Announce;
+    mGMands["ban"] = &ChatManager::GMCommand_Ban;
     mGMands["contract"] = &ChatManager::GMCommand_Contract;
     mGMands["crash"] = &ChatManager::GMCommand_Crash;
     mGMands["effect"] = &ChatManager::GMCommand_Effect;
@@ -66,6 +68,7 @@ ChatManager::ChatManager(const std::weak_ptr<ChannelServer>& server)
     mGMands["familiarity"] = &ChatManager::GMCommand_Familiarity;
     mGMands["homepoint"] = &ChatManager::GMCommand_Homepoint;
     mGMands["item"] = &ChatManager::GMCommand_Item;
+    mGMands["kick"] = &ChatManager::GMCommand_Kick;
     mGMands["kill"] = &ChatManager::GMCommand_Kill;
     mGMands["levelup"] = &ChatManager::GMCommand_LevelUp;
     mGMands["lnc"] = &ChatManager::GMCommand_LNC;
@@ -193,23 +196,55 @@ bool ChatManager::ExecuteGMCommand(const std::shared_ptr<
 bool ChatManager::GMCommand_Announce(const std::shared_ptr<
     channel::ChannelClientConnection>& client,
     const std::list<libcomp::String>& args)
-
 {
     std::list<libcomp::String> argsCopy = args;
     int8_t color = 0;
 
-    if ((!GetIntegerArg<int8_t>(color,argsCopy)) || argsCopy.size() < 1) 
+    if(!GetIntegerArg<int8_t>(color, argsCopy) || argsCopy.size() < 1)
     {
         return SendChatMessage(client, ChatType_t::CHAT_SELF, libcomp::String(
             "@announce requires two arguments, <color> <message>"));
     }
-    
-    libcomp::String message = libcomp::String::Join(argsCopy," ");
+
+    libcomp::String message = libcomp::String::Join(argsCopy, " ");
     auto server = mServer.lock();
     server->SendSystemMessage(client, message, color, true);
+
     return true;
 }
 
+bool ChatManager::GMCommand_Ban(const std::shared_ptr<
+    channel::ChannelClientConnection>& client,
+    const std::list<libcomp::String>& args)
+{
+    std::list<libcomp::String> argsCopy = args;
+    libcomp::String bannedPlayer;
+
+    if (!GetStringArg(bannedPlayer, argsCopy) || argsCopy.size() > 1)
+    {
+         return SendChatMessage(client, ChatType_t::CHAT_SELF, libcomp::String(
+            "@ban requires one argument, <username>"));
+    }
+    
+    auto server = mServer.lock();
+    auto worldDB = server->GetWorldDatabase();
+    auto lobbyDB = server->GetLobbyDatabase();
+    auto target = objects::Character::LoadCharacterByName(worldDB, bannedPlayer);
+    auto targetAccount = target ? target->GetAccount().Get() : nullptr;
+    auto targetClient = targetAccount ? server->GetManagerConnection()->GetClientConnection(
+        targetAccount->GetUsername()) : nullptr;
+
+    if(targetClient != nullptr) 
+    {
+        targetAccount->SetIsBanned(true);
+        targetAccount->Update(lobbyDB);
+        targetClient->Close();
+
+        return true;
+    }
+
+    return false;
+}
 
 bool ChatManager::GMCommand_Contract(const std::shared_ptr<
     channel::ChannelClientConnection>& client,
@@ -222,6 +257,7 @@ bool ChatManager::GMCommand_Contract(const std::shared_ptr<
     auto definitionManager = server->GetDefinitionManager();
 
     uint32_t demonID;
+
     if(!GetIntegerArg<uint32_t>(demonID, argsCopy))
     {
         libcomp::String name;
@@ -243,6 +279,7 @@ bool ChatManager::GMCommand_Contract(const std::shared_ptr<
 
     auto demon = characterManager->ContractDemon(character,
         definitionManager->GetDevilData(demonID));
+
     if(nullptr == demon)
     {
         return false;
@@ -275,6 +312,7 @@ bool ChatManager::GMCommand_Effect(const std::shared_ptr<
     std::list<libcomp::String> argsCopy = args;
 
     uint32_t effectID;
+
     if(!GetIntegerArg<uint32_t>(effectID, argsCopy))
     {
         return SendChatMessage(client, ChatType_t::CHAT_SELF, libcomp::String(
@@ -284,6 +322,7 @@ bool ChatManager::GMCommand_Effect(const std::shared_ptr<
     auto server = mServer.lock();
     auto definitionManager = server->GetDefinitionManager();
     auto def = definitionManager->GetStatusData(effectID);
+
     if(!def)
     {
         return SendChatMessage(client, ChatType_t::CHAT_SELF, libcomp::String(
@@ -292,6 +331,7 @@ bool ChatManager::GMCommand_Effect(const std::shared_ptr<
 
     // If the next arg starts with a '+', mark as an add instead of replace
     bool isAdd = false;
+
     if(argsCopy.size() > 0)
     {
         libcomp::String& next = argsCopy.front();
@@ -303,6 +343,7 @@ bool ChatManager::GMCommand_Effect(const std::shared_ptr<
     }
 
     uint8_t stack;
+
     if(!GetIntegerArg<uint8_t>(stack, argsCopy))
     {
         return SendChatMessage(client, ChatType_t::CHAT_SELF, libcomp::String(
@@ -334,7 +375,7 @@ bool ChatManager::GMCommand_Enemy(const std::shared_ptr<
 
     // Valid params: enemy, enemy+AI, enemy+AI+x+y, enemy+AI+x+y+rot,
     // enemy+x+y, enemy+x+y+rot
-    if(argsCopy.size() == 0 || argsCopy.size() > 5)
+    if(argsCopy.empty() || argsCopy.size() > 5)
     {
         return SendChatMessage(client, ChatType_t::CHAT_SELF, libcomp::String(
             "@enemy requires one to five args"));
@@ -347,19 +388,23 @@ bool ChatManager::GMCommand_Enemy(const std::shared_ptr<
     auto zoneManager = server->GetZoneManager();
 
     uint32_t demonID;
+
     if(!GetIntegerArg<uint32_t>(demonID, argsCopy))
     {
         libcomp::String name;
+
         if(!GetStringArg(name, argsCopy))
         {
             return false;
         }
 
         auto devilData = definitionManager->GetDevilData(name);
+
         if(devilData == nullptr)
         {
             return false;
         }
+
         demonID = devilData->GetBasic()->GetID();
     }
 
@@ -370,10 +415,12 @@ bool ChatManager::GMCommand_Enemy(const std::shared_ptr<
 
     // All optional params past this point
     libcomp::String aiType = "default";
-    if(argsCopy.size() > 0)
+
+    if(!argsCopy.empty())
     {
         // Check for a number for X first
         bool xParam = GetDecimalArg<float>(x, argsCopy);
+
         if(!xParam)
         {
             // Assume a non-number is an AI script type
@@ -434,6 +481,7 @@ bool ChatManager::GMCommand_Familiarity(const std::shared_ptr<
     std::list<libcomp::String> argsCopy = args;
 
     uint16_t familiarity;
+
     if(!GetIntegerArg<uint16_t>(familiarity, argsCopy))
     {
         return false;
@@ -468,6 +516,7 @@ bool ChatManager::GMCommand_Item(const std::shared_ptr<
     auto definitionManager = server->GetDefinitionManager();
 
     uint32_t itemID;
+
     if(!GetIntegerArg<uint32_t>(itemID, argsCopy))
     {
         libcomp::String name;
@@ -496,6 +545,7 @@ bool ChatManager::GMCommand_Item(const std::shared_ptr<
     }
 
     uint16_t stackSize;
+
     if(!GetIntegerArg<uint16_t>(stackSize, argsCopy))
     {
         stackSize = 1;
@@ -503,6 +553,36 @@ bool ChatManager::GMCommand_Item(const std::shared_ptr<
 
     return server->GetCharacterManager()
         ->AddRemoveItem(client, itemID, stackSize, true);
+}
+
+bool ChatManager::GMCommand_Kick(const std::shared_ptr<
+    channel::ChannelClientConnection>& client,
+    const std::list<libcomp::String>& args)
+{
+    std::list<libcomp::String> argsCopy = args;
+    libcomp::String kickedPlayer;
+
+    if(!GetStringArg(kickedPlayer, argsCopy) || argsCopy.size() > 1)
+    {
+         return SendChatMessage(client, ChatType_t::CHAT_SELF, libcomp::String(
+            "@kick requires one argument, <username>"));
+    }
+
+    auto server = mServer.lock();
+    auto worldDB = server->GetWorldDatabase();
+    auto target = objects::Character::LoadCharacterByName(worldDB, kickedPlayer);
+    auto targetAccount = target ? target->GetAccount().Get() : nullptr;
+    auto targetClient = targetAccount ? server->GetManagerConnection()->GetClientConnection(
+        targetAccount->GetUsername()) : nullptr;
+
+    if(targetClient != nullptr) 
+    {
+        targetClient->Close();
+
+        return true;
+    }
+
+    return false;
 }
 
 bool ChatManager::GMCommand_Kill(const std::shared_ptr<
@@ -520,13 +600,16 @@ bool ChatManager::GMCommand_Kill(const std::shared_ptr<
     auto zoneManager = server->GetZoneManager();
 
     libcomp::String name;
+
     if(GetStringArg(name, argsCopy))
     {
         targetState = nullptr;
+
         for(auto zConnection : zoneManager->GetZoneConnections(client, true))
         {
             auto zCharState = zConnection->GetClientState()->
                 GetCharacterState();
+
             if(zCharState->GetEntity()->GetName() == name)
             {
                 targetState = zCharState;
@@ -575,6 +658,7 @@ bool ChatManager::GMCommand_LevelUp(const std::shared_ptr<
     std::list<libcomp::String> argsCopy = args;
 
     int8_t lvl;
+
     if(GetIntegerArg<int8_t>(lvl, argsCopy))
     {
         if(lvl > 99 || lvl < 1)
@@ -594,6 +678,7 @@ bool ChatManager::GMCommand_LevelUp(const std::shared_ptr<
     bool isDemon = GetStringArg(target, argsCopy) && target.ToLower() == "demon";
     int32_t entityID;
     int8_t currentLevel;
+
     if(isDemon)
     {
         entityID = state->GetDemonState()->GetEntityID();
@@ -628,6 +713,7 @@ bool ChatManager::GMCommand_LNC(const std::shared_ptr<
     std::list<libcomp::String> argsCopy = args;
 
     int16_t lnc;
+
     if(!GetIntegerArg<int16_t>(lnc, argsCopy))
     {
         return false;
@@ -646,6 +732,7 @@ bool ChatManager::GMCommand_Map(const std::shared_ptr<
 
     size_t mapIndex;
     uint8_t mapValue;
+
     if(!GetIntegerArg<size_t>(mapIndex, argsCopy) ||
         !GetIntegerArg<uint8_t>(mapValue, argsCopy))
     {
@@ -668,9 +755,11 @@ bool ChatManager::GMCommand_Position(const std::shared_ptr<
     auto zoneManager = server->GetZoneManager();
 
     std::list<libcomp::String> argsCopy = args;
+
     if(!args.empty() && args.size() == 2)
     {
         float destX, destY;
+
         if(!GetDecimalArg<float>(destX, argsCopy) ||
             !GetDecimalArg<float>(destY, argsCopy))
         {
@@ -713,12 +802,14 @@ bool ChatManager::GMCommand_Skill(const std::shared_ptr<
     auto definitionManager = server->GetDefinitionManager();
 
     uint32_t skillID;
+
     if(!GetIntegerArg<uint32_t>(skillID, argsCopy))
     {
         return false;
     }
 
     auto skill = definitionManager->GetSkillData(skillID);
+
     if(skill == nullptr)
     {
         return false;
@@ -770,19 +861,21 @@ bool ChatManager::GMCommand_TickerMessage(const std::shared_ptr<
     std::list<libcomp::String> argsCopy = args;
     int8_t mode = 0;
 
-    if(!(GetIntegerArg(mode,argsCopy)) || argsCopy.size() < 1)   
+    if(!GetIntegerArg(mode, argsCopy) || argsCopy.size() < 1)   
     {
         return SendChatMessage(client, ChatType_t::CHAT_SELF, libcomp::String(
             "Syntax invalid, try @tickermessage <mode> <message>"));
     }
-    libcomp::String message = libcomp::String::Join(argsCopy," ");
+
+    libcomp::String message = libcomp::String::Join(argsCopy, " ");
 
     if (mode == 1) 
     {
-        server->SendSystemMessage(client,message,0,true);
+        server->SendSystemMessage(client, message, 0, true);
     }  
 
     conf->SetSystemMessage(message);
+
     return true;
 }
 
@@ -891,6 +984,7 @@ bool ChatManager::GMCommand_XP(const std::shared_ptr<
     std::list<libcomp::String> argsCopy = args;
 
     uint64_t xpGain;
+
     if(!GetIntegerArg<uint64_t>(xpGain, argsCopy))
     {
         return false;
