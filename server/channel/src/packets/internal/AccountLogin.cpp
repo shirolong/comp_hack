@@ -57,6 +57,14 @@ bool Parsers::AccountLogin::Parse(libcomp::ManagerPacket *pPacketManager,
 {
     (void)connection;
 
+    if(0 == p.Left())
+    {
+        LOG_ERROR("Invalid response received for AccountLogin.\n");
+        return false;
+    }
+
+    int8_t errorCode = p.ReadS8();
+
     objects::AccountLogin response;
     if(!response.LoadPacket(p, false))
     {
@@ -72,7 +80,7 @@ bool Parsers::AccountLogin::Parse(libcomp::ManagerPacket *pPacketManager,
     if(nullptr == account)
     {
         LOG_ERROR("Unknown account returned from AccountLogin response.\n");
-        return false;
+        return true;
     }
 
     // The character should be cached as well
@@ -81,14 +89,20 @@ bool Parsers::AccountLogin::Parse(libcomp::ManagerPacket *pPacketManager,
     if(nullptr == character)
     {
         LOG_ERROR("Invalid character returned from AccountLogin response.\n");
-        return false;
+        return true;
     }
 
     auto username = account->GetUsername();
     auto client = server->GetManagerConnection()->GetClientConnection(username);
     if(nullptr == client)
     {
-        return false;
+        return true;
+    }
+
+    if(1 != errorCode)
+    {
+        client->Close();
+        return true;
     }
 
     auto login = client->GetClientState()->GetAccountLogin();
