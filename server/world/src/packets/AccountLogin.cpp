@@ -170,6 +170,9 @@ void LobbyLogin(std::shared_ptr<WorldServer> server,
 
             login->SetCharacterLogin(cLogin);
             login->SavePacket(channelReply, false);
+
+            LOG_DEBUG(libcomp::String("Logging in account '%1' with session key"
+                " %2\n").Arg(account->GetUsername()).Arg(login->GetSessionKey()));
         }
     }
 
@@ -198,10 +201,16 @@ void ChannelLogin(std::shared_ptr<WorldServer> server,
         LOG_ERROR("No username passed to AccountLogin from the channel.\n");
         return;
     }
-    else if(nullptr == login || nullptr == cLogin)
+    else if(nullptr == login)
     {
         LOG_ERROR(libcomp::String("Account with username '%1'"
-            " is not logged in to this world.\n").Arg(username));
+            " is not logged in to this world (bad login).\n").Arg(username));
+        ok = false;
+    }
+    else if(nullptr == cLogin)
+    {
+        LOG_ERROR(libcomp::String("Account with username '%1'"
+            " is not logged in to this world (bad cLogin).\n").Arg(username));
         ok = false;
     }
     else if(channel->GetID() != (uint8_t)cLogin->GetChannelID())
@@ -213,7 +222,8 @@ void ChannelLogin(std::shared_ptr<WorldServer> server,
     else if(login->GetSessionKey() != sesssionKey)
     {
         LOG_ERROR(libcomp::String("Invalid session key provided for"
-            " account with username '%1'\n").Arg(username));
+            " account with username '%1': Expected %2, found %3\n")
+            .Arg(username).Arg(login->GetSessionKey()).Arg(sesssionKey));
         ok = false;
     }
 
@@ -288,13 +298,13 @@ void ChannelLogin(std::shared_ptr<WorldServer> server,
         {
             reply.WriteS8(0); // Failure
         }
+
+        login->SavePacket(reply, false);
     }
     else
     {
         reply.WriteS8(0); // Failure
     }
-
-    login->SavePacket(reply, false);
 
     connection->SendPacket(reply);
 }

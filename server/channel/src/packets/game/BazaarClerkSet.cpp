@@ -1,10 +1,10 @@
 /**
- * @file server/channel/src/packets/game/Login.cpp
+ * @file server/channel/src/packets/game/BazaarClerkSet.cpp
  * @ingroup channel
  *
  * @author HACKfrost
  *
- * @brief Request from the client to log in.
+ * @brief Request to set the player's bazaar clerk NPC.
  *
  * This file is part of the Channel Server (channel).
  *
@@ -29,38 +29,61 @@
 // libcomp Includes
 #include <ManagerPacket.h>
 #include <Packet.h>
-#include <ReadOnlyPacket.h>
-#include <TcpConnection.h>
+#include <PacketCodes.h>
+
+// objects Includes
+#include <AccountWorldData.h>
+#include <BazaarData.h>
 
 // channel Includes
-#include "AccountManager.h"
-#include "ChannelClientConnection.h"
 #include "ChannelServer.h"
 
 using namespace channel;
 
-void LoginAccount(AccountManager* accountManager,
-    std::shared_ptr<ChannelClientConnection> client, const libcomp::String username,
-    uint32_t sessionKey)
-{
-    accountManager->HandleLoginRequest(client, username, sessionKey);
-}
-
-bool Parsers::Login::Parse(libcomp::ManagerPacket *pPacketManager,
+bool Parsers::BazaarClerkSet::Parse(libcomp::ManagerPacket *pPacketManager,
     const std::shared_ptr<libcomp::TcpConnection>& connection,
     libcomp::ReadOnlyPacket& p) const
 {
-    // Classic authentication method: username followed by the session key
-    libcomp::String username = p.ReadString16(libcomp::Convert::ENCODING_UTF8, true);
-    uint32_t sessionKey = p.ReadU32Little();
+    if(p.Size() != 2)
+    {
+        return false;
+    }
 
-    connection->SetName(libcomp::String("%1:%2").Arg(
-        connection->GetName()).Arg(username));
+    int16_t npcType = p.ReadS16Little();
 
     auto server = std::dynamic_pointer_cast<ChannelServer>(pPacketManager->GetServer());
     auto client = std::dynamic_pointer_cast<ChannelClientConnection>(connection);
+    auto state = client->GetClientState();
+    auto bState = state->GetBazaarState();
+    auto cState = state->GetCharacterState();
+    auto zone = cState->GetZone();
 
-    server->QueueWork(LoginAccount, server->GetAccountManager(), client, username, sessionKey);
+    auto worldData = state->GetAccountWorldData().Get();
+    auto bazaarData = worldData->GetBazaarData().Get();
+
+    libcomp::Packet reply;
+    reply.WritePacketCode(ChannelToClientPacketCode_t::PACKET_BAZAAR_CLERK_SET);
+
+    if(bazaarData && bState)
+    {
+        if(bazaarData->GetNPCType() != npcType)
+        {
+            bazaarData->SetNPCType(npcType);
+
+            server->GetZoneManager()->SendBazaarMarketData(zone, bState,
+                bazaarData->GetMarketID());
+
+            server->GetWorldDatabase()->QueueUpdate(bazaarData);
+        }
+
+        reply.WriteS32Little(0);
+    }
+    else
+    {
+        reply.WriteS32Little(-1);
+    }
+
+    client->SendPacket(reply);
 
     return true;
 }

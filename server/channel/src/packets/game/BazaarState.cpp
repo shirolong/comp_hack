@@ -1,10 +1,10 @@
 /**
- * @file server/channel/src/packets/game/Login.cpp
+ * @file server/channel/src/packets/game/BazaarState.cpp
  * @ingroup channel
  *
  * @author HACKfrost
  *
- * @brief Request from the client to log in.
+ * @brief Request for the current zone's bazaar cost and duration.
  *
  * This file is part of the Channel Server (channel).
  *
@@ -27,40 +27,42 @@
 #include "Packets.h"
 
 // libcomp Includes
+#include <Log.h>
 #include <ManagerPacket.h>
 #include <Packet.h>
-#include <ReadOnlyPacket.h>
-#include <TcpConnection.h>
+#include <PacketCodes.h>
+
+// object Includes
+#include <ServerZone.h>
 
 // channel Includes
-#include "AccountManager.h"
-#include "ChannelClientConnection.h"
 #include "ChannelServer.h"
 
 using namespace channel;
 
-void LoginAccount(AccountManager* accountManager,
-    std::shared_ptr<ChannelClientConnection> client, const libcomp::String username,
-    uint32_t sessionKey)
-{
-    accountManager->HandleLoginRequest(client, username, sessionKey);
-}
-
-bool Parsers::Login::Parse(libcomp::ManagerPacket *pPacketManager,
+bool Parsers::BazaarState::Parse(libcomp::ManagerPacket *pPacketManager,
     const std::shared_ptr<libcomp::TcpConnection>& connection,
     libcomp::ReadOnlyPacket& p) const
 {
-    // Classic authentication method: username followed by the session key
-    libcomp::String username = p.ReadString16(libcomp::Convert::ENCODING_UTF8, true);
-    uint32_t sessionKey = p.ReadU32Little();
-
-    connection->SetName(libcomp::String("%1:%2").Arg(
-        connection->GetName()).Arg(username));
+    if(p.Size() != 0)
+    {
+        return false;
+    }
 
     auto server = std::dynamic_pointer_cast<ChannelServer>(pPacketManager->GetServer());
     auto client = std::dynamic_pointer_cast<ChannelClientConnection>(connection);
+    auto state = client->GetClientState();
+    auto cState = state->GetCharacterState();
+    auto zone = cState->GetZone();
+    auto zoneDef = zone ? zone->GetDefinition() : nullptr;
 
-    server->QueueWork(LoginAccount, server->GetAccountManager(), client, username, sessionKey);
+    libcomp::Packet reply;
+    reply.WritePacketCode(ChannelToClientPacketCode_t::PACKET_BAZAAR_STATE);
+    reply.WriteS32Little(zoneDef ? (int32_t)zoneDef->GetBazaarMarketTime() : 0);
+    reply.WriteS32Little(zoneDef ? (int32_t)zoneDef->GetBazaarMarketCost() : 0);
+    reply.WriteS32Little(zoneDef ? 0 : -1);
+
+    connection->SendPacket(reply);
 
     return true;
 }

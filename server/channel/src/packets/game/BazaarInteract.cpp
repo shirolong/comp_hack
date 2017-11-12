@@ -1,10 +1,10 @@
 /**
- * @file server/channel/src/packets/game/Login.cpp
+ * @file server/channel/src/packets/game/BazaarInteract.cpp
  * @ingroup channel
  *
  * @author HACKfrost
  *
- * @brief Request from the client to log in.
+ * @brief Request to interact with a specific bazaar market.
  *
  * This file is part of the Channel Server (channel).
  *
@@ -27,40 +27,49 @@
 #include "Packets.h"
 
 // libcomp Includes
+#include <Log.h>
 #include <ManagerPacket.h>
 #include <Packet.h>
-#include <ReadOnlyPacket.h>
-#include <TcpConnection.h>
+#include <PacketCodes.h>
+
+// object Includes
+#include <EventInstance.h>
 
 // channel Includes
-#include "AccountManager.h"
-#include "ChannelClientConnection.h"
 #include "ChannelServer.h"
 
 using namespace channel;
 
-void LoginAccount(AccountManager* accountManager,
-    std::shared_ptr<ChannelClientConnection> client, const libcomp::String username,
-    uint32_t sessionKey)
-{
-    accountManager->HandleLoginRequest(client, username, sessionKey);
-}
-
-bool Parsers::Login::Parse(libcomp::ManagerPacket *pPacketManager,
+bool Parsers::BazaarInteract::Parse(libcomp::ManagerPacket *pPacketManager,
     const std::shared_ptr<libcomp::TcpConnection>& connection,
     libcomp::ReadOnlyPacket& p) const
 {
-    // Classic authentication method: username followed by the session key
-    libcomp::String username = p.ReadString16(libcomp::Convert::ENCODING_UTF8, true);
-    uint32_t sessionKey = p.ReadU32Little();
+    if(p.Size() != 8)
+    {
+        return false;
+    }
 
-    connection->SetName(libcomp::String("%1:%2").Arg(
-        connection->GetName()).Arg(username));
+    int32_t bazaarEntityID = p.ReadS32Little();
+    int32_t bazaarMarketID = p.ReadS32Little();
 
     auto server = std::dynamic_pointer_cast<ChannelServer>(pPacketManager->GetServer());
     auto client = std::dynamic_pointer_cast<ChannelClientConnection>(connection);
+    auto eventManager = server->GetEventManager();
 
-    server->QueueWork(LoginAccount, server->GetAccountManager(), client, username, sessionKey);
+    auto instance = eventManager->PrepareEvent(client, "event_bazaar", bazaarEntityID);
+
+    bool success = instance != nullptr;
+    if(success)
+    {
+        instance->SetShopID((uint32_t)bazaarMarketID);
+        success = eventManager->HandleEvent(client, instance);
+    }
+
+    if(!success)
+    {
+        LOG_ERROR(libcomp::String("Failed to open bazaar market: %1\n")
+            .Arg(bazaarMarketID));
+    }
 
     return true;
 }
