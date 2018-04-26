@@ -63,14 +63,14 @@ MACRO(XMLTO_XHTML imgdir fragment out mode in)
 	ENDIF(XMLTO_FOUND)
 ENDMACRO(XMLTO_XHTML fragment out mode in)
 
-FILE(GLOB_RECURSE GUIDE_XML_SRCS *.xml)
-
-XMLTO_XHTML(
-	static config.xsl guide xhtml book.xml
-	${GUIDE_XML_SRCS}
-)
-
 IF(XMLTO_FOUND)
+    FILE(GLOB_RECURSE GUIDE_XML_SRCS *.xml)
+
+    XMLTO_XHTML(
+        static config.xsl guide xhtml book.xml
+        ${GUIDE_XML_SRCS}
+    )
+
     INSTALL(DIRECTORY ${CMAKE_BINARY_DIR}/guide
         DESTINATION share/doc/comp_hack)
 ENDIF(XMLTO_FOUND)
