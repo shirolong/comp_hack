@@ -1,3 +1,9 @@
+comphack (3.1.1.1) xenial; urgency=low
+
+  * Fixed the debian package to include the debug symbols again.
+
+ -- COMP Omega <compomega@tutanota.com>  Fri, 06 Jul 2018 17:26:00 -0600
+
 comphack (3.1.1) xenial; urgency=low
 
   * Hotfix 1 for the Lilim SP1 server release.
