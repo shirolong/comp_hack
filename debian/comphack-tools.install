@@ -1,5 +1,4 @@
 usr/bin/comp_bdpatch
-usr/bin/comp_capfilter
 usr/bin/comp_logger_headless
 usr/bin/comp_decrypt
 usr/bin/comp_encrypt

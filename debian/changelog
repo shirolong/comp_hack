@@ -1,3 +1,9 @@
+comphack (3.9.1.1) xenial; urgency=low
+
+  * Removed the old utility comp_capfilter from the Debian package scripts.
+
+ -- COMP Omega <compomega@tutanota.com>  Mon, 12 Nov 2018 21:04:26 -0700
+
 comphack (3.9.1) xenial; urgency=low
 
   * Hathor Release Candidate 1 includes:
