@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ActionUpdatePoints</class>
+ <widget class="QWidget" name="ActionUpdatePoints">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QFormLayout" name="formLayout">
+     <property name="fieldGrowthPolicy">
+      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="lblPointType">
+       <property name="text">
+        <string>Point Type:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QComboBox" name="pointType">
+       <item>
+        <property name="text">
+         <string>CP</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Soul Points</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Digitalize Points</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Coins</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>I-Time</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>BP</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Kill Value</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PvP Points</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>UB Points</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Cowrie</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Bethel</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Ziotite</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="lblValue">
+       <property name="text">
+        <string>Value:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QSpinBox" name="value">
+       <property name="minimum">
+        <number>-2147483647</number>
+       </property>
+       <property name="maximum">
+        <number>2147483647</number>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="lblModifier">
+       <property name="text">
+        <string>Modifier:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QSpinBox" name="modifier">
+       <property name="minimum">
+        <number>-128</number>
+       </property>
+       <property name="maximum">
+        <number>127</number>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="lblIsSet">
+       <property name="text">
+        <string>Set:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QCheckBox" name="isSet"/>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

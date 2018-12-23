@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ActionGrantSkills</class>
+ <widget class="QWidget" name="ActionGrantSkills">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QFormLayout" name="formLayout">
+     <property name="fieldGrowthPolicy">
+      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="lblTargetType">
+       <property name="text">
+        <string>Target Type:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QComboBox" name="targetType">
+       <item>
+        <property name="text">
+         <string>Character</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Partner</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="lblSkillPoints">
+       <property name="text">
+        <string>Skill Points:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QSpinBox" name="skillPoints">
+       <property name="maximum">
+        <number>65535</number>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="lblSkillIDs">
+       <property name="text">
+        <string>Skill IDs:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="DynamicList" name="skillIDs" native="true"/>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="lblExpertiseMax">
+       <property name="text">
+        <string>Expertise Max:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QSpinBox" name="expertiseMax">
+       <property name="maximum">
+        <number>127</number>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="lblExpertisePoints">
+       <property name="text">
+        <string>Expertise Points:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="ActionMap" name="expertisePoints" native="true"/>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLabel" name="lblExpertiseSet">
+       <property name="text">
+        <string>Expertise Set:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QCheckBox" name="expertiseSet">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ActionMap</class>
+   <extends>QWidget</extends>
+   <header>ActionMap.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>DynamicList</class>
+   <extends>QWidget</extends>
+   <header>DynamicList.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

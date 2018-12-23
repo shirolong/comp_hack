@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ActionAddRemoveItems</class>
+ <widget class="QWidget" name="ActionAddRemoveItems">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QFormLayout" name="formLayout">
+     <property name="fieldGrowthPolicy">
+      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="lblNotify">
+       <property name="text">
+        <string>Notify:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QCheckBox" name="notify"/>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="lblFromDropSet">
+       <property name="text">
+        <string>From Drop Set:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QCheckBox" name="fromDropSet">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="lblItems">
+       <property name="text">
+        <string>Items:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="ActionMap" name="items" native="true"/>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="lblMode">
+       <property name="text">
+        <string>Mode:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QComboBox" name="mode">
+       <item>
+        <property name="text">
+         <string>Inventory</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Material Tank</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Post</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Time Trial Reward</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Culture Pickup</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Destiny Box</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ActionMap</class>
+   <extends>QWidget</extends>
+   <header>ActionMap.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

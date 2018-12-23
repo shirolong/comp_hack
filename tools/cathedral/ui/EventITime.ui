@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>EventITime</class>
+ <widget class="QWidget" name="EventITime">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QFormLayout" name="formLayout">
+     <property name="fieldGrowthPolicy">
+      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="lblITimeID">
+       <property name="text">
+        <string>I-Time ID:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QSpinBox" name="iTimeID">
+       <property name="minimum">
+        <number>-128</number>
+       </property>
+       <property name="maximum">
+        <number>127</number>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="lblReactionID">
+       <property name="text">
+        <string>Reaction ID:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QSpinBox" name="reactionID">
+       <property name="minimum">
+        <number>-2147483647</number>
+       </property>
+       <property name="maximum">
+        <number>2147483647</number>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="lblTimeLimit">
+       <property name="text">
+        <string>Time Limit:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QSpinBox" name="timeLimit">
+       <property name="maximum">
+        <number>1000</number>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="lblGiftIDs">
+       <property name="text">
+        <string>Gift IDs:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="DynamicList" name="giftIDs" native="true"/>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="lblStartActions">
+       <property name="text">
+        <string>Start Actions:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="EventRef" name="startActions" native="true"/>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>DynamicList</class>
+   <extends>QWidget</extends>
+   <header>DynamicList.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>EventRef</class>
+   <extends>QWidget</extends>
+   <header>EventRef.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

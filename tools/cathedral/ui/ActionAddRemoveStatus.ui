@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ActionAddRemoveStatus</class>
+ <widget class="QWidget" name="ActionAddRemoveStatus">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QFormLayout" name="formLayout">
+     <property name="fieldGrowthPolicy">
+      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="lblTargetType">
+       <property name="text">
+        <string>Target Type:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QComboBox" name="targetType">
+       <item>
+        <property name="text">
+         <string>Character</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Partner</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Character &amp; Partner</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Source</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="lblReplace">
+       <property name="text">
+        <string>Replace:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QCheckBox" name="isReplace"/>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="lblStatusStacks">
+       <property name="text">
+        <string>Status Stacks:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="ActionMap" name="statusStacks" native="true"/>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="lblStatusTimes">
+       <property name="text">
+        <string>Status Times:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="ActionMap" name="statusTimes" native="true"/>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="lblAllowNull">
+       <property name="text">
+        <string>Allow Null:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QCheckBox" name="allowNull">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ActionMap</class>
+   <extends>QWidget</extends>
+   <header>ActionMap.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

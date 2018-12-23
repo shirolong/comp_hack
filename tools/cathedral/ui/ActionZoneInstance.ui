@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ActionZoneInstance</class>
+ <widget class="QWidget" name="ActionZoneInstance">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QFormLayout" name="formLayout">
+     <property name="fieldGrowthPolicy">
+      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="lblInstanceID">
+       <property name="text">
+        <string>Instance ID:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QSpinBox" name="instanceID">
+       <property name="maximum">
+        <number>2147483647</number>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="lblMode">
+       <property name="text">
+        <string>Mode:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QComboBox" name="mode">
+       <item>
+        <property name="text">
+         <string>Create</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Join</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Start Timer</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Stop Timer</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Team PvP</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Team Join</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Clan Join</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="lblVariantID">
+       <property name="text">
+        <string>Variant ID:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QSpinBox" name="variantID">
+       <property name="maximum">
+        <number>2147483647</number>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="lblTimerID">
+       <property name="text">
+        <string>Timer ID:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QSpinBox" name="timerID">
+       <property name="maximum">
+        <number>2147483647</number>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="lblTimerExpirationEvent">
+       <property name="text">
+        <string>Timer Expiration Event:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="EventRef" name="timerExpirationEvent" native="true"/>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>EventRef</class>
+   <extends>QWidget</extends>
+   <header>EventRef.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

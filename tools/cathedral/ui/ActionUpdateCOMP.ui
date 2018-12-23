@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ActionUpdateCOMP</class>
+ <widget class="QWidget" name="ActionUpdateCOMP">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QFormLayout" name="formLayout">
+     <property name="fieldGrowthPolicy">
+      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="lblAddSlot">
+       <property name="text">
+        <string>Add Slot:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QSpinBox" name="addSlot">
+       <property name="maximum">
+        <number>255</number>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="lblAddDemons">
+       <property name="text">
+        <string>Add Demons:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="ActionMap" name="addDemons" native="true"/>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="lblRemoveDemons">
+       <property name="text">
+        <string>Remove Demons:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="ActionMap" name="removeDemons" native="true"/>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="lblUnsummon">
+       <property name="text">
+        <string>Unsummon:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QCheckBox" name="unsummon">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ActionMap</class>
+   <extends>QWidget</extends>
+   <header>ActionMap.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

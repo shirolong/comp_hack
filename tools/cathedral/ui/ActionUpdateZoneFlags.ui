@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ActionUpdateZoneFlags</class>
+ <widget class="QWidget" name="ActionUpdateZoneFlags">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QFormLayout" name="formLayout">
+     <property name="fieldGrowthPolicy">
+      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="lblType">
+       <property name="text">
+        <string>Type:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QComboBox" name="type">
+       <item>
+        <property name="text">
+         <string>Zone</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Zone Character</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Zone Instance</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Zone Instance Character</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Tokusei</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Partner Tokusei</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="lblSetMode">
+       <property name="text">
+        <string>Set Mode:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QComboBox" name="setMode">
+       <item>
+        <property name="text">
+         <string>Update</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Increment</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Decrement</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="lblFlagStates">
+       <property name="text">
+        <string>Flag States:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="ActionMap" name="flagStates" native="true"/>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ActionMap</class>
+   <extends>QWidget</extends>
+   <header>ActionMap.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

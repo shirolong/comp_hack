@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>EventPrompt</class>
+ <widget class="QWidget" name="EventPrompt">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QFormLayout" name="formLayout">
+     <property name="fieldGrowthPolicy">
+      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="lblMessage">
+       <property name="text">
+        <string>Message:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="lblChoices">
+       <property name="text">
+        <string>Choices:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="DynamicList" name="choices" native="true"/>
+     </item>
+     <item row="0" column="1">
+      <widget class="EventMessageRef" name="message" native="true"/>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>DynamicList</class>
+   <extends>QWidget</extends>
+   <header>DynamicList.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>EventMessageRef</class>
+   <extends>QWidget</extends>
+   <header>EventMessageRef.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>
