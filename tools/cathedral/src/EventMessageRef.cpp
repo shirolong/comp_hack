@@ -35,8 +35,8 @@
 #include "ui_EventMessageRef.h"
 #include <PopIgnore.h>
 
-EventMessageRef::EventMessageRef(QWidget *pParent) : QWidget(pParent),
-    mMainWindow(nullptr)
+EventMessageRef::EventMessageRef(QWidget *pParent)
+    : ObjectSelectorBase(pParent)
 {
     ui = new Ui::EventMessageRef;
     ui->setupUi(this);
@@ -44,6 +44,7 @@ EventMessageRef::EventMessageRef(QWidget *pParent) : QWidget(pParent),
     ui->message->setFontPointSize(10);
     ui->message->setText("[Empty]");
 
+    connect(ui->getMessage, SIGNAL(clicked()), this, SLOT(GetItem()));
     connect(ui->messageID, SIGNAL(valueChanged(int)), this,
         SLOT(MessageIDChanged()));
 }
@@ -55,17 +56,17 @@ EventMessageRef::~EventMessageRef()
 
 void EventMessageRef::SetMainWindow(MainWindow *pMainWindow)
 {
-    mMainWindow = pMainWindow;
+    Bind(pMainWindow, "CEventMessageData");
 }
 
-void EventMessageRef::SetValue(int32_t value)
+void EventMessageRef::SetValue(uint32_t value)
 {
-    ui->messageID->setValue(value);
+    ui->messageID->setValue((int32_t)value);
 }
 
-int32_t EventMessageRef::GetValue() const
+uint32_t EventMessageRef::GetValue() const
 {
-    return ui->messageID->value();
+    return (uint32_t)ui->messageID->value();
 }
 
 void EventMessageRef::MessageIDChanged()
@@ -74,7 +75,7 @@ void EventMessageRef::MessageIDChanged()
 
     if(mMainWindow)
     {
-        auto msg = mMainWindow->GetEventMessage(GetValue());
+        auto msg = mMainWindow->GetEventMessage((int32_t)GetValue());
         if(msg)
         {
             ui->message->setText(qs(

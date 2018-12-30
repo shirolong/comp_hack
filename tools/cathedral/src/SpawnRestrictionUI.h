@@ -1,10 +1,10 @@
 /**
- * @file tools/cathedral/src/SpotListWindow.h
+ * @file tools/cathedral/src/SpawnRestrictionUI.h
  * @ingroup cathedral
  *
- * @author COMP Omega <compomega@tutanota.com>
+ * @author HACKfrost
  *
- * @brief Definition for a window that holds a list of zone spots.
+ * @brief Definition for a configured SpawnRestriction.
  *
  * Copyright (C) 2012-2018 COMP_hack Team <compomega@tutanota.com>
  *
@@ -22,34 +22,44 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef TOOLS_CATHEDRAL_SRC_SPOTLISTWINDOW_H
-#define TOOLS_CATHEDRAL_SRC_SPOTLISTWINDOW_H
+#ifndef TOOLS_CATHEDRAL_SRC_SPAWNRESTRICTIONUI_H
+#define TOOLS_CATHEDRAL_SRC_SPAWNRESTRICTIONUI_H
 
-#include "ObjectListWindow.h"
+// Qt Includes
+#include <PushIgnore.h>
+#include <QWidget>
+#include <PopIgnore.h>
+
+// Standard C++11 Includes
+#include <memory>
+
+namespace objects
+{
+
+class SpawnRestriction;
+
+} // namespace objects
 
 namespace Ui
 {
 
-class SpotProperties;
+class SpawnRestriction;
 
 } // namespace Ui
 
-class SpotListWindow : public ObjectListWindow
+class SpawnRestriction : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit SpotListWindow(MainWindow *pMainWindow, QWidget *pParent = 0);
-    virtual ~SpotListWindow();
+    explicit SpawnRestriction(QWidget *pParent = 0);
+    virtual ~SpawnRestriction();
 
-    QString GetObjectID(const std::shared_ptr<
-        libcomp::Object>& obj) const override;
-
-    void LoadProperties(const std::shared_ptr<libcomp::Object>& obj) override;
-    void SaveProperties(const std::shared_ptr<libcomp::Object>& obj) override;
+    void Load(const std::shared_ptr<objects::SpawnRestriction>& restrict);
+    std::shared_ptr<objects::SpawnRestriction> Save() const;
 
 protected:
-    Ui::SpotProperties *prop;
+    Ui::SpawnRestriction *prop;
 };
 
-#endif // TOOLS_CATHEDRAL_SRC_SPOTLISTWINDOW_H
+#endif // TOOLS_CATHEDRAL_SRC_SPAWNRESTRICTIONUI_H

@@ -25,6 +25,7 @@
 #include "EventUI.h"
 
 // Cathedral Includes
+#include "EventWindow.h"
 #include "MainWindow.h"
 
 // Qt Includes
@@ -46,12 +47,16 @@ Event::Event(MainWindow *pMainWindow, QWidget *pParent) :
 
     ui->branches->Setup(DynamicItemType_t::OBJ_EVENT_BASE, pMainWindow);
     ui->conditions->Setup(DynamicItemType_t::OBJ_EVENT_CONDITION, pMainWindow);
+    ui->comments->Setup(DynamicItemType_t::PRIMITIVE_MULTILINE_STRING,
+        pMainWindow);
 
     ui->layoutBaseBody->setVisible(false);
 
     ui->next->SetMainWindow(pMainWindow);
     ui->queueNext->SetMainWindow(pMainWindow);
 
+    connect(ui->changeEventID, SIGNAL(clicked(bool)), this,
+        SLOT(ChangeEventID()));
     connect(ui->toggleBaseDisplay, SIGNAL(clicked(bool)), this,
         SLOT(ToggleBaseDisplay()));
 }
@@ -143,6 +148,34 @@ std::shared_ptr<objects::Event> Event::Save() const
     mEventBase->SetConditions(conditions);
 
     return mEventBase;
+}
+
+void Event::SetComments(const std::list<libcomp::String>& comments)
+{
+    ui->comments->Clear();
+    for(auto comment : comments)
+    {
+        ui->comments->AddString(comment);
+    }
+
+    if(comments.size() > 0 && !ui->layoutBaseBody->isVisible())
+    {
+        ToggleBaseDisplay();
+    }
+}
+
+std::list<libcomp::String> Event::GetComments()
+{
+    return ui->comments->GetStringList();
+}
+
+void Event::ChangeEventID()
+{
+    if(mMainWindow && mEventBase)
+    {
+        auto eventWindow = mMainWindow->GetEvents();
+        eventWindow->ChangeEventID(mEventBase->GetID());
+    }
 }
 
 void Event::ToggleBaseDisplay()

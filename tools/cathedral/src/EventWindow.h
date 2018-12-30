@@ -30,6 +30,8 @@
 // Qt Includes
 #include <PushIgnore.h>
 #include <QWidget>
+
+#include "ui_EventWindow.h"
 #include <PopIgnore.h>
 
 // objects Includes
@@ -40,12 +42,12 @@
 // Standard C++11 Includes
 #include <set>
 
-namespace Ui
+namespace objects
 {
 
-class EventWindow;
+class Action;
 
-} // namespace Ui
+} // namespace objects
 
 class EventFile;
 class EventTreeItem;
@@ -53,7 +55,7 @@ class FileEvent;
 class MainWindow;
 class QTreeWidgetItem;
 
-class EventWindow : public QWidget
+class EventWindow : public QMainWindow
 {
     Q_OBJECT
 
@@ -65,21 +67,27 @@ public:
 
     size_t GetLoadedEventCount() const;
 
+    void ChangeEventID(const libcomp::String& currentID);
+
 private slots:
     void FileSelectionChanged();
     void LoadDirectory();
     void LoadFile();
     void SaveFile();
+    void SaveAllFiles();
     void NewFile();
     void NewEvent();
-    void Refresh();
+    void RemoveEvent();
+    void Refresh(bool reselectEvent = true);
+    void GoTo();
     void CurrentEventEdited();
     void TreeSelectionChanged();
 
 private:
-    void LoadFilesFromPaths(const QStringList& inPaths);
     bool LoadFileFromPath(const libcomp::String& path);
     bool SelectFile(const libcomp::String& path);
+
+    void SaveFiles(const std::list<libcomp::String>& paths);
 
     std::shared_ptr<objects::Event> GetNewEvent(
         objects::Event::EventType_t type) const;
@@ -91,9 +99,17 @@ private:
         const std::shared_ptr<EventFile>& file,
         std::set<libcomp::String>& seen, int32_t eventIdx = -1);
 
-    void RebuildGlobalIDMap();
+    void ChangeEventIDs(const std::unordered_map<libcomp::String,
+        libcomp::String>& idMap);
+    bool ChangeActionEventIDs(const std::unordered_map<libcomp::String,
+        libcomp::String>& idMap, const std::list<std::shared_ptr<
+        objects::Action>>& actions);
 
-    void SimplifyObjectXML(std::list<tinyxml2::XMLNode*> nodes);
+    libcomp::String GetNewEventID(const std::shared_ptr<EventFile>& file,
+        objects::Event::EventType_t eventType);
+
+    void RebuildLocalIDMap(const std::shared_ptr<EventFile>& file);
+    void RebuildGlobalIDMap();
 
     libcomp::String GetInlineMessageText(const libcomp::String& raw,
         size_t limit = 0);

@@ -57,6 +57,7 @@ SET(${PROJECT_NAME}_SRCS
     src/ActionUpdateZoneFlagsUI.cpp
     src/ActionZoneChangeUI.cpp
     src/ActionZoneInstanceUI.cpp
+    src/BinaryDataNamedSet.cpp
     src/DynamicList.cpp
     src/DynamicListItem.cpp
     src/EventUI.cpp
@@ -77,12 +78,25 @@ SET(${PROJECT_NAME}_SRCS
     src/EventWindow.cpp
     src/ItemDropUI.cpp
     src/MainWindow.cpp
-    src/NPCListWindow.cpp
+    src/NPCList.cpp
     src/ObjectListModel.cpp
-    src/ObjectListWindow.cpp
+    src/ObjectList.cpp
     src/ObjectPositionUI.cpp
+    src/ObjectSelector.cpp
+    src/ObjectSelectorBase.cpp
+    src/ObjectSelectorList.cpp
+    src/ObjectSelectorWindow.cpp
     src/ServerScript.cpp
-    src/SpotListWindow.cpp
+    src/SpawnList.cpp
+    src/SpawnGroupList.cpp
+    src/SpawnLocationGroupList.cpp
+    src/SpawnLocationUI.cpp
+    src/SpawnRestrictionUI.cpp
+    src/SpotList.cpp
+    src/XmlHandler.cpp
+    src/ZonePartialSelector.cpp
+    src/ZoneTriggerUI.cpp
+    src/ZoneWindow.cpp
 )
 
 SET(${PROJECT_NAME}_HDRS
@@ -114,6 +128,7 @@ SET(${PROJECT_NAME}_HDRS
     src/ActionUpdateZoneFlagsUI.h
     src/ActionZoneChangeUI.h
     src/ActionZoneInstanceUI.h
+    src/BinaryDataNamedSet.h
     src/DynamicList.h
     src/DynamicListItem.h
     src/EventUI.h
@@ -134,12 +149,25 @@ SET(${PROJECT_NAME}_HDRS
     src/EventWindow.h
     src/ItemDropUI.h
     src/MainWindow.h
-    src/NPCListWindow.h
+    src/NPCList.h
     src/ObjectListModel.h
-    src/ObjectListWindow.h
+    src/ObjectList.h
     src/ObjectPositionUI.h
+    src/ObjectSelector.h
+    src/ObjectSelectorBase.h
+    src/ObjectSelectorList.h
+    src/ObjectSelectorWindow.h
     src/ServerScript.h
-    src/SpotListWindow.h
+    src/SpawnList.h
+    src/SpawnGroupList.h
+    src/SpawnLocationGroupList.h
+    src/SpawnLocationUI.h
+    src/SpawnRestrictionUI.h
+    src/SpotList.h
+    src/XmlHandler.h
+    src/ZonePartialSelector.h
+    src/ZoneTriggerUI.h
+    src/ZoneWindow.h
 )
 
 SET(${PROJECT_NAME}_RCC
@@ -195,9 +223,19 @@ SET(${PROJECT_NAME}_UIS
     ui/EventWindow.ui
     ui/ItemDrop.ui
     ui/MainWindow.ui
-    ui/ObjectListWindow.ui
+    ui/ObjectList.ui
     ui/ObjectPosition.ui
+    ui/ObjectSelector.ui
+    ui/ObjectSelectorWindow.ui
     ui/ServerScript.ui
+    ui/Spawn.ui
+    ui/SpawnGroup.ui
+    ui/SpawnLocation.ui
+    ui/SpawnLocationGroup.ui
+    ui/SpawnRestriction.ui
+    ui/ZonePartialSelector.ui
+    ui/ZoneTrigger.ui
+    ui/ZoneWindow.ui
 
     # Properties for each object.
     ui/NPCProperties.ui

@@ -25,8 +25,12 @@
 #include "EventWindow.h"
 
 // Cathedral Includes
+#include "ActionDelay.h"
 #include "ActionList.h"
 #include "ActionMap.h"
+#include "ActionSpawn.h"
+#include "ActionStartEvent.h"
+#include "ActionZoneInstance.h"
 #include "DynamicList.h"
 #include "EventUI.h"
 #include "EventDirectionUI.h"
@@ -40,11 +44,11 @@
 #include "EventPromptUI.h"
 #include "EventRef.h"
 #include "MainWindow.h"
+#include "XmlHandler.h"
+#include "ZoneWindow.h"
 
 // Qt Includes
 #include <PushIgnore.h>
-#include "ui_EventWindow.h"
-
 #include <QCheckBox>
 #include <QDir>
 #include <QDirIterator>
@@ -56,14 +60,14 @@
 #include <QMessageBox>
 #include <QRadioButton>
 #include <QSettings>
+#include <QShortcut>
 #include <QSpinBox>
+#include <QTextEdit>
 #include <PopIgnore.h>
 
 // object Includes
 #include <Event.h>
-#include <EventBase.h>
 #include <EventChoice.h>
-#include <EventCondition.h>
 #include <EventDirection.h>
 #include <EventExNPCMessage.h>
 #include <EventITime.h>
@@ -112,6 +116,7 @@ public:
 
     std::shared_ptr<objects::Event> Event;
     libcomp::String FileEventID;
+    std::list<libcomp::String> Comments;
     bool HasUpdates;
 };
 
@@ -125,24 +130,14 @@ public:
 };
 
 EventWindow::EventWindow(MainWindow *pMainWindow, QWidget *pParent) :
-    QWidget(pParent), mMainWindow(pMainWindow)
+    QMainWindow(pParent), mMainWindow(pMainWindow)
 {
     ui = new Ui::EventWindow;
     ui->setupUi(this);
 
     QAction *pAction = nullptr;
 
-    QMenu *pMenu = new QMenu(tr("Load"));
-
-    pAction = pMenu->addAction("File");
-    connect(pAction, SIGNAL(triggered()), this, SLOT(LoadFile()));
-
-    pAction = pMenu->addAction("Directory");
-    connect(pAction, SIGNAL(triggered()), this, SLOT(LoadDirectory()));
-
-    ui->load->setMenu(pMenu);
-
-    pMenu = new QMenu(tr("Add Event"));
+    QMenu *pMenu = new QMenu(tr("Add Event"));
 
     pAction = pMenu->addAction("Fork");
     pAction->setData(to_underlying(
@@ -196,13 +191,25 @@ EventWindow::EventWindow(MainWindow *pMainWindow, QWidget *pParent) :
 
     ui->addEvent->setMenu(pMenu);
 
-    connect(ui->save, SIGNAL(clicked()), this, SLOT(SaveFile()));
-    connect(ui->newFile, SIGNAL(clicked()), this, SLOT(NewFile()));
-    connect(ui->refresh, SIGNAL(clicked()), this, SLOT(Refresh()));
+    ui->removeEvent->hide();
+
+    connect(ui->actionLoadFile, SIGNAL(triggered()), this, SLOT(LoadFile()));
+    connect(ui->actionLoadDirectory, SIGNAL(triggered()), this,
+        SLOT(LoadDirectory()));
+    connect(ui->actionSave, SIGNAL(triggered()), this, SLOT(SaveFile()));
+    connect(ui->actionSaveAll, SIGNAL(triggered()), this,
+        SLOT(SaveAllFiles()));
+    connect(ui->actionNew, SIGNAL(triggered()), this, SLOT(NewFile()));
+    connect(ui->actionRefresh, SIGNAL(triggered()), this, SLOT(Refresh()));
+    connect(ui->actionGoto, SIGNAL(triggered()), this, SLOT(GoTo()));
+    connect(ui->removeEvent, SIGNAL(clicked()), this, SLOT(RemoveEvent()));
     connect(ui->files, SIGNAL(currentIndexChanged(const QString&)), this,
         SLOT(FileSelectionChanged()));
     connect(ui->treeWidget, SIGNAL(itemSelectionChanged()), this,
         SLOT(TreeSelectionChanged()));
+
+    QShortcut *shortcut = new QShortcut(QKeySequence("F5"), this);
+    connect(shortcut, SIGNAL(activated()), this, SLOT(Refresh()));
 }
 
 EventWindow::~EventWindow()
@@ -272,9 +279,82 @@ size_t EventWindow::GetLoadedEventCount() const
     return total;
 }
 
+void EventWindow::ChangeEventID(const libcomp::String& currentID)
+{
+    auto it = mGlobalIDMap.find(currentID);
+    if(it == mGlobalIDMap.end())
+    {
+        return;
+    }
+
+    auto fileIter = mFiles.find(it->second);
+    if(fileIter == mFiles.end())
+    {
+        return;
+    }
+
+    std::shared_ptr<FileEvent> fEvent;
+
+    auto file = fileIter->second;
+    if(file && file->EventIDMap.find(currentID) != file->EventIDMap.end())
+    {
+        auto eIter = file->Events.begin();
+        std::advance(eIter, file->EventIDMap[currentID]);
+        fEvent = *eIter;
+    }
+
+    if(fEvent)
+    {
+        libcomp::String eventID = GetNewEventID(file, fEvent->Event
+            ->GetEventType());
+        if(eventID.IsEmpty())
+        {
+            return;
+        }
+
+        auto reply = QMessageBox::question(this, "Confirm Rename",
+            QString("Event ID '%1' will be changed to '%2' and all currently"
+                " loaded event references will be updated automatically"
+                " however, no files will be saved at this time. Only the"
+                " current zone and loaded zone partials will be updated."
+                " Please confirm this action.")
+            .arg(currentID.C()).arg(eventID.C()),
+            QMessageBox::Yes | QMessageBox::No);
+        if(reply != QMessageBox::Yes)
+        {
+            return;
+        }
+
+        // Deselect the tree so everything saves
+        ui->treeWidget->clearSelection();
+
+        // Update the event
+        fEvent->Event->SetID(eventID);
+
+        std::unordered_map<libcomp::String, libcomp::String> eventIDMap;
+        eventIDMap[currentID] = eventID;
+
+        ChangeEventIDs(eventIDMap);
+
+        // Refresh and select the new event
+        fEvent->HasUpdates = true;
+        RebuildLocalIDMap(file);
+        RebuildGlobalIDMap();
+        Refresh(false);
+        GoToEvent(eventID);
+    }
+    else
+    {
+        QMessageBox err;
+        err.setText(qs(libcomp::String("Event ID '%1' does not exist")
+            .Arg(currentID)));
+        err.exec();
+    }
+}
+
 void EventWindow::FileSelectionChanged()
 {
-    Refresh();
+    Refresh(false);
 }
 
 void EventWindow::LoadDirectory()
@@ -310,7 +390,7 @@ void EventWindow::LoadDirectory()
     mMainWindow->ResetEventCount();
 
     // Refresh selection even if it didnt change
-    Refresh();
+    Refresh(false);
 }
 
 void EventWindow::LoadFile()
@@ -341,7 +421,7 @@ void EventWindow::LoadFile()
         else
         {
             // Just refresh
-            Refresh();
+            Refresh(false);
         }
     }
     else
@@ -359,116 +439,20 @@ void EventWindow::SaveFile()
         return;
     }
 
-    std::list<std::shared_ptr<FileEvent>> updates;
+    std::list<libcomp::String> paths;
+    paths.push_back(path);
+    SaveFiles(paths);
+}
 
-    auto file = mFiles[path];
-    for(auto fEvent : file->Events)
+void EventWindow::SaveAllFiles()
+{
+    std::list<libcomp::String> paths;
+    for(auto& pair : mFiles)
     {
-        if(fEvent->HasUpdates)
-        {
-            updates.push_back(fEvent);
-        }
+        paths.push_back(pair.first);
     }
 
-    if(updates.size() == 0)
-    {
-        // Nothing to save
-        return;
-    }
-
-    // Update the current event if we haven't already
-    if(mCurrentEvent && mCurrentEvent->HasUpdates)
-    {
-        for(auto eCtrl : ui->splitter->findChildren<Event*>())
-        {
-            eCtrl->Save();
-        }
-    }
-
-    tinyxml2::XMLDocument doc;
-    if(tinyxml2::XML_NO_ERROR != doc.LoadFile(path.C()))
-    {
-        LOG_ERROR(libcomp::String("Failed to parse file for saving: %1\n")
-            .Arg(path));
-        return;
-    }
-
-    std::unordered_map<libcomp::String, tinyxml2::XMLNode*> existingEvents;
-
-    auto rootElem = doc.RootElement();
-    if(!rootElem)
-    {
-        // If for whatever reason we don't have a root element, create one now
-        rootElem = doc.NewElement("objects");
-        doc.InsertEndChild(rootElem);
-    }
-    else
-    {
-        // Load all existing events for replacement
-        auto child = rootElem->FirstChild();
-        while(child != 0)
-        {
-            auto member = child->FirstChildElement("member");
-            while(member != 0)
-            {
-                libcomp::String memberName(member->Attribute("name"));
-                if(memberName == "ID")
-                {
-                    auto txtChild = member->FirstChild();
-                    auto txt = txtChild ? txtChild->ToText() : 0;
-                    if(txt)
-                    {
-                        existingEvents[txt->Value()] = child;
-                    }
-                    break;
-                }
-
-                member = member->NextSiblingElement("member");
-            }
-
-            child = child->NextSibling();
-        }
-    }
-
-    std::list<tinyxml2::XMLNode*> updatedNodes;
-    for(auto fEvent : file->Events)
-    {
-        if(!fEvent->HasUpdates) continue;
-
-        // Append event to the existing file
-        auto e = fEvent->Event;
-        e->Save(doc, *rootElem);
-
-        tinyxml2::XMLNode* eNode = rootElem->LastChild();
-        if(!fEvent->FileEventID.IsEmpty())
-        {
-            // If the event already existed in the file, move it to the same
-            // location and drop the old one
-            auto iter = existingEvents.find(fEvent->FileEventID);
-            if(iter != existingEvents.end())
-            {
-                if(iter->second->NextSibling() != eNode)
-                {
-                    rootElem->InsertAfterChild(iter->second, eNode);
-                }
-
-                rootElem->DeleteChild(iter->second);
-                existingEvents[fEvent->FileEventID] = eNode;
-            }
-        }
-
-        updatedNodes.push_back(eNode);
-
-        fEvent->HasUpdates = false;
-        fEvent->FileEventID = e->GetID();
-    }
-
-    SimplifyObjectXML(updatedNodes);
-
-    doc.SaveFile(path.C());
-
-    RebuildGlobalIDMap();
-    Refresh();
+    SaveFiles(paths);
 }
 
 void EventWindow::NewFile()
@@ -506,6 +490,41 @@ void EventWindow::NewFile()
     }
 }
 
+void EventWindow::RemoveEvent()
+{
+    auto fIter = mFiles.find(cs(ui->files->currentText()));
+    if(fIter == mFiles.end())
+    {
+        // No file
+        return;
+    }
+
+    auto file = fIter->second;
+    if(mCurrentEvent)
+    {
+        if(!mCurrentEvent->FileEventID.IsEmpty())
+        {
+            file->PendingRemovals.insert(mCurrentEvent->FileEventID);
+        }
+
+        for(auto it = file->Events.begin(); it != file->Events.end(); it++)
+        {
+            if(*it == mCurrentEvent)
+            {
+                file->Events.erase(it);
+                break;
+            }
+        }
+
+        mCurrentEvent = nullptr;
+
+        RebuildLocalIDMap(file);
+        RebuildGlobalIDMap();
+        mMainWindow->ResetEventCount();
+        Refresh(false);
+    }
+}
+
 void EventWindow::NewEvent()
 {
     QAction *pAction = qobject_cast<QAction*>(sender());
@@ -524,153 +543,52 @@ void EventWindow::NewEvent()
     auto file = fIter->second;
     auto eventType = (objects::Event::EventType_t)pAction->data().toUInt();
 
-    // Suggest an ID that is not already taken based off current IDs in
-    // the file and cross checked against other loaded files
-    libcomp::String commonPrefix;
-
-    auto eIter = file->Events.begin();
-    if(eIter != file->Events.end())
+    libcomp::String eventID = GetNewEventID(file, eventType);
+    if(!eventID.IsEmpty())
     {
-        commonPrefix = (*eIter)->Event->GetID();
-        eIter++;
-    }
-
-    for(; eIter != file->Events.end(); eIter++)
-    {
-        auto id = (*eIter)->Event->GetID();
-        while(commonPrefix.Length() > 0 &&
-            commonPrefix != id.Left(commonPrefix.Length()))
-        {
-            commonPrefix = commonPrefix.Left((size_t)(
-                commonPrefix.Length() - 1));
-        }
-
-        if(commonPrefix.Length() == 0)
-        {
-            // No common prefix
-            break;
-        }
-    }
-
-    if(commonPrefix.Length() > 0)
-    {
-        // Add type abbreviation and increase number until new ID is found
-        if(commonPrefix.Right(1) == "_")
-        {
-            // Remove double underscore
-            commonPrefix = commonPrefix.Left((size_t)(
-                commonPrefix.Length() - 1));
-        }
-
-        switch(eventType)
-        {
-        case objects::Event::EventType_t::NPC_MESSAGE:
-            commonPrefix += "_NM";
-            break;
-        case objects::Event::EventType_t::EX_NPC_MESSAGE:
-            commonPrefix += "_EX";
-            break;
-        case objects::Event::EventType_t::MULTITALK:
-            commonPrefix += "_ML";
-            break;
-        case objects::Event::EventType_t::PROMPT:
-            commonPrefix += "_PR";
-            break;
-        case objects::Event::EventType_t::PERFORM_ACTIONS:
-            commonPrefix += "_PA";
-            break;
-        case objects::Event::EventType_t::OPEN_MENU:
-            commonPrefix += "_ME";
-            break;
-        case objects::Event::EventType_t::PLAY_SCENE:
-            commonPrefix += "_SC";
-            break;
-        case objects::Event::EventType_t::DIRECTION:
-            commonPrefix += "_DR";
-            break;
-        case objects::Event::EventType_t::ITIME:
-            commonPrefix += "_IT";
-            break;
-        case objects::Event::EventType_t::FORK:
-        default:
-            commonPrefix += "_";
-            break;
-        }
-    }
-
-    libcomp::String suggestedID(commonPrefix);
-    if(suggestedID.Length() > 0)
-    {
-        // Add sequence number to the event and make sure its not already
-        // taken
-        bool validFound = false;
-        for(size_t i = 1; i < 1000; i++)
-        {
-            // Zero pad the number
-            auto str = libcomp::String("%1%2").Arg(suggestedID)
-                .Arg(libcomp::String("%1").Arg(1000 + i).Right(3));
-            if(mGlobalIDMap.find(str) == mGlobalIDMap.end())
-            {
-                suggestedID = str;
-                validFound = true;
-                break;
-            }
-        }
-
-        if(!validFound)
-        {
-            // No suggested ID
-            suggestedID.Clear();
-        }
-    }
-
-    libcomp::String eventID;
-    while(true)
-    {
-        QString qEventID = QInputDialog::getText(this, "Enter an ID", "New ID",
-            QLineEdit::Normal, qs(suggestedID));
-        if(qEventID.isEmpty())
-        {
-            return;
-        }
-
-        eventID = cs(qEventID);
-
-        auto globalIter = mGlobalIDMap.find(eventID);
-        if(globalIter != mGlobalIDMap.end())
-        {
-            QMessageBox err;
-            err.setText(qs(libcomp::String("Event ID '%1' already exists in"
-                " file: %2").Arg(eventID).Arg(globalIter->second)));
-            err.exec();
-        }
-        else
-        {
-            break;
-        }
+        return;
     }
 
     // Create and add the event
     auto e = GetNewEvent(eventType);
     e->SetID(eventID);
 
-    file->EventIDMap[eventID] = (int32_t)file->Events.size();
     file->Events.push_back(std::make_shared<FileEvent>(e, true));
 
     // Rebuild the global map and update the main window
+    RebuildLocalIDMap(file);
     RebuildGlobalIDMap();
     mMainWindow->ResetEventCount();
 
     // Refresh the file and select the new event
-    Refresh();
+    Refresh(false);
     GoToEvent(eventID);
 }
 
-void EventWindow::Refresh()
+void EventWindow::Refresh(bool reselectEvent)
 {
+    auto current = mCurrentEvent;
+
     libcomp::String path = cs(ui->files->currentText());
 
     SelectFile(path);
+
+    if(reselectEvent && current)
+    {
+        GoToEvent(current->FileEventID);
+    }
+}
+
+void EventWindow::GoTo()
+{
+    QString qEventID = QInputDialog::getText(this, "Enter an ID", "Event ID",
+        QLineEdit::Normal);
+    if(qEventID.isEmpty())
+    {
+        return;
+    }
+
+    GoToEvent(cs(qEventID));
 }
 
 void EventWindow::CurrentEventEdited()
@@ -722,6 +640,7 @@ bool EventWindow::LoadFileFromPath(const libcomp::String& path)
     }
 
     std::list<std::shared_ptr<objects::Event>> events;
+    std::list<std::list<libcomp::String>> commentSets;
 
     auto objNode = rootElem->FirstChildElement("object");
     while(objNode)
@@ -741,11 +660,12 @@ bool EventWindow::LoadFileFromPath(const libcomp::String& path)
         }
 
         events.push_back(event);
+        commentSets.push_back(XmlHandler::GetComments(objNode));
 
         objNode = objNode->NextSiblingElement("object");
     }
 
-    // Add the file if if has events or no child nodes
+    // Add the file if it has events or no child nodes
     if(events.size() > 0 || rootElem->FirstChild() == nullptr)
     {
         if(mFiles.find(path) != mFiles.end())
@@ -764,21 +684,16 @@ bool EventWindow::LoadFileFromPath(const libcomp::String& path)
 
         for(auto e : events)
         {
-            if(file->EventIDMap.find(e->GetID()) == file->EventIDMap.end())
-            {
-                // Don't add it twice
-                file->EventIDMap[e->GetID()] = (int32_t)file->Events.size();
-            }
-            else
-            {
-                LOG_ERROR(libcomp::String("Duplicate event ID %1 encountered"
-                    " in file: %2\n").Arg(e->GetID()).Arg(path));
-            }
+            auto fEvent = std::make_shared<FileEvent>(e);
+            fEvent->Comments = commentSets.front();
+            file->Events.push_back(fEvent);
 
-            file->Events.push_back(std::make_shared<FileEvent>(e));
+            commentSets.pop_front();
         }
 
         mFiles[path] = file;
+
+        RebuildLocalIDMap(file);
 
         // Rebuild the context menu
         ui->files->clear();
@@ -842,6 +757,166 @@ bool EventWindow::SelectFile(const libcomp::String& path)
     ui->treeWidget->resizeColumnToContents(0);
 
     return true;
+}
+
+void EventWindow::SaveFiles(const std::list<libcomp::String>& paths)
+{
+    // Update the current event if we haven't already
+    if(mCurrentEvent && mCurrentEvent->HasUpdates)
+    {
+        for(auto eCtrl : ui->splitter->findChildren<Event*>())
+        {
+            if(mCurrentEvent->Event == eCtrl->Save())
+            {
+                mCurrentEvent->Comments = eCtrl->GetComments();
+            }
+        }
+    }
+
+    for(auto path : paths)
+    {
+        std::list<std::shared_ptr<FileEvent>> updates;
+
+        auto file = mFiles[path];
+        for(auto fEvent : file->Events)
+        {
+            if(fEvent->HasUpdates)
+            {
+                updates.push_back(fEvent);
+            }
+        }
+
+        if(updates.size() == 0 && file->PendingRemovals.size() == 0)
+        {
+            // Nothing to save
+            continue;
+        }
+
+        tinyxml2::XMLDocument doc;
+        if(tinyxml2::XML_NO_ERROR != doc.LoadFile(path.C()))
+        {
+            LOG_ERROR(libcomp::String("Failed to parse file for saving: %1\n")
+                .Arg(path));
+            continue;
+        }
+
+        std::unordered_map<libcomp::String, tinyxml2::XMLNode*> existingEvents;
+
+        auto rootElem = doc.RootElement();
+        if(!rootElem)
+        {
+            // If for whatever reason we don't have a root element, create
+            // one now
+            rootElem = doc.NewElement("objects");
+            doc.InsertEndChild(rootElem);
+        }
+        else
+        {
+            // Load all existing events for replacement
+            auto child = rootElem->FirstChild();
+            while(child != 0)
+            {
+                auto member = child->FirstChildElement("member");
+                while(member != 0)
+                {
+                    libcomp::String memberName(member->Attribute("name"));
+                    if(memberName == "ID")
+                    {
+                        auto txtChild = member->FirstChild();
+                        auto txt = txtChild ? txtChild->ToText() : 0;
+                        if(txt)
+                        {
+                            existingEvents[txt->Value()] = child;
+                        }
+                        break;
+                    }
+
+                    member = member->NextSiblingElement("member");
+                }
+
+                child = child->NextSibling();
+            }
+        }
+
+        // Remove events first
+        for(auto eventID : file->PendingRemovals)
+        {
+            auto iter = existingEvents.find(eventID);
+            if(iter != existingEvents.end())
+            {
+                rootElem->DeleteChild(iter->second);
+            }
+        }
+
+        file->PendingRemovals.clear();
+
+        // Now handle updates
+        std::list<tinyxml2::XMLNode*> updatedNodes;
+        for(auto fEvent : file->Events)
+        {
+            if(!fEvent->HasUpdates) continue;
+
+            // Append event to the existing file
+            auto e = fEvent->Event;
+            e->Save(doc, *rootElem);
+
+            tinyxml2::XMLNode* eNode = rootElem->LastChild();
+            if(fEvent->Comments.size())
+            {
+                tinyxml2::XMLNode* commentNode = 0;
+                for(auto comment : fEvent->Comments)
+                {
+                    auto cNode = doc.NewComment(libcomp::String(" %1 ")
+                        .Arg(comment).C());
+
+                    if(commentNode)
+                    {
+                        eNode->InsertAfterChild(commentNode, cNode);
+                    }
+                    else
+                    {
+                        eNode->InsertFirstChild(cNode);
+                    }
+
+                    commentNode = cNode;
+                }
+            }
+
+            if(!fEvent->FileEventID.IsEmpty())
+            {
+                // If the event already existed in the file, move it to the
+                // same location and drop the old one
+                auto iter = existingEvents.find(fEvent->FileEventID);
+                if(iter != existingEvents.end())
+                {
+                    if(iter->second->NextSibling() != eNode)
+                    {
+                        rootElem->InsertAfterChild(iter->second, eNode);
+                    }
+
+                    rootElem->DeleteChild(iter->second);
+                    existingEvents[fEvent->FileEventID] = eNode;
+                }
+            }
+
+            updatedNodes.push_back(eNode);
+
+            fEvent->HasUpdates = false;
+            fEvent->FileEventID = e->GetID();
+        }
+
+        if(updatedNodes.size() > 0)
+        {
+            XmlHandler::SimplifyObjects(updatedNodes);
+        }
+
+        doc.SaveFile(path.C());
+
+        LOG_DEBUG(libcomp::String("Updated event file '%1'\n").Arg(path));
+    }
+
+    RebuildGlobalIDMap();
+    Refresh(true);
 }
 
 std::shared_ptr<objects::Event> EventWindow::GetNewEvent(
@@ -931,25 +1006,23 @@ void EventWindow::BindSelectedEvent()
 
     if(!eNode)
     {
-        std::shared_ptr<objects::Event> e;
-        if(fileIdx != -1 && file &&
-            file->Events.size() > (size_t)fileIdx)
+        if(fileIdx != -1 && file && file->Events.size() >
+            (std::list<std::shared_ptr<FileEvent>>::size_type)fileIdx)
         {
             auto eIter2 = file->Events.begin();
             std::advance(eIter2, fileIdx);
             mCurrentEvent = *eIter2;
-            e = mCurrentEvent->Event;
             editListen = !mCurrentEvent->HasUpdates;
         }
 
-        if(e)
+        if(mCurrentEvent)
         {
-            switch(e->GetEventType())
+            switch(mCurrentEvent->Event->GetEventType())
             {
             case objects::Event::EventType_t::FORK:
                 {
                     auto eUI = new Event(mMainWindow);
-                    eUI->Load(e);
+                    eUI->Load(mCurrentEvent->Event);
 
                     eNode = eUI;
                 }
@@ -957,7 +1030,7 @@ void EventWindow::BindSelectedEvent()
             case objects::Event::EventType_t::NPC_MESSAGE:
                 {
                     auto eUI = new EventNPCMessage(mMainWindow);
-                    eUI->Load(e);
+                    eUI->Load(mCurrentEvent->Event);
 
                     eNode = eUI;
                 }
@@ -965,7 +1038,7 @@ void EventWindow::BindSelectedEvent()
             case objects::Event::EventType_t::EX_NPC_MESSAGE:
                 {
                     auto eUI = new EventExNPCMessage(mMainWindow);
-                    eUI->Load(e);
+                    eUI->Load(mCurrentEvent->Event);
 
                     eNode = eUI;
                 }
@@ -973,7 +1046,7 @@ void EventWindow::BindSelectedEvent()
             case objects::Event::EventType_t::MULTITALK:
                 {
                     auto eUI = new EventMultitalk(mMainWindow);
-                    eUI->Load(e);
+                    eUI->Load(mCurrentEvent->Event);
 
                     eNode = eUI;
                 }
@@ -981,7 +1054,7 @@ void EventWindow::BindSelectedEvent()
             case objects::Event::EventType_t::PROMPT:
                 {
                     auto eUI = new EventPrompt(mMainWindow);
-                    eUI->Load(e);
+                    eUI->Load(mCurrentEvent->Event);
 
                     eNode = eUI;
                 }
@@ -989,7 +1062,7 @@ void EventWindow::BindSelectedEvent()
             case objects::Event::EventType_t::PERFORM_ACTIONS:
                 {
                     auto eUI = new EventPerformActions(mMainWindow);
-                    eUI->Load(e);
+                    eUI->Load(mCurrentEvent->Event);
 
                     eNode = eUI;
                 }
@@ -997,7 +1070,7 @@ void EventWindow::BindSelectedEvent()
             case objects::Event::EventType_t::OPEN_MENU:
                 {
                     auto eUI = new EventOpenMenu(mMainWindow);
-                    eUI->Load(e);
+                    eUI->Load(mCurrentEvent->Event);
 
                     eNode = eUI;
                 }
@@ -1005,7 +1078,7 @@ void EventWindow::BindSelectedEvent()
             case objects::Event::EventType_t::PLAY_SCENE:
                 {
                     auto eUI = new EventPlayScene(mMainWindow);
-                    eUI->Load(e);
+                    eUI->Load(mCurrentEvent->Event);
 
                     eNode = eUI;
                 }
@@ -1013,7 +1086,7 @@ void EventWindow::BindSelectedEvent()
             case objects::Event::EventType_t::DIRECTION:
                 {
                     auto eUI = new EventDirection(mMainWindow);
-                    eUI->Load(e);
+                    eUI->Load(mCurrentEvent->Event);
 
                     eNode = eUI;
                 }
@@ -1021,7 +1094,7 @@ void EventWindow::BindSelectedEvent()
             case objects::Event::EventType_t::ITIME:
                 {
                     auto eUI = new EventITime(mMainWindow);
-                    eUI->Load(e);
+                    eUI->Load(mCurrentEvent->Event);
 
                     eNode = eUI;
                 }
@@ -1029,16 +1102,24 @@ void EventWindow::BindSelectedEvent()
             default:
                 break;
             }
+
+            if(eNode)
+            {
+                ((Event*)eNode)->SetComments(mCurrentEvent->Comments);
+            }
         }
     }
 
     // If the previous current event was updated, update the event definition
-    // from the current control
+    // from the current control (should only be one)
     if(previousEvent && previousEvent->HasUpdates)
     {
         for(auto eCtrl : ui->splitter->findChildren<Event*>())
         {
-            eCtrl->Save();
+            if(previousEvent->Event == eCtrl->Save())
+            {
+                previousEvent->Comments = eCtrl->GetComments();
+            }
         }
     }
 
@@ -1060,9 +1141,12 @@ void EventWindow::BindSelectedEvent()
         }
 
         ui->layoutView->insertWidget(1, eNode);
+
+        ui->removeEvent->show();
     }
     else
     {
+        ui->removeEvent->hide();
         ui->lblNoCurrent->show();
     }
 }
@@ -1106,6 +1190,11 @@ void EventWindow::BindEventEditControls(QWidget* eNode)
     {
         connect(ctrl, SIGNAL(textChanged(const QString&)), this,
             SLOT(CurrentEventEdited()));
+    }
+
+    for(auto ctrl : eNode->findChildren<QTextEdit*>())
+    {
+        connect(ctrl, SIGNAL(textChanged()), this, SLOT(CurrentEventEdited()));
     }
 
     for(auto ctrl : eNode->findChildren<QDoubleSpinBox*>())
@@ -1221,11 +1310,8 @@ void EventWindow::AddEventToTree(const libcomp::String& id,
         ui->treeWidget->addTopLevelItem(item);
     }
 
-    if(!e->GetNext().IsEmpty())
-    {
-        // Add directly under the node
-        AddEventToTree(e->GetNext(), item, file, seen);
-    }
+    AddEventToTree(e->GetNext(), item, file, seen);
+    AddEventToTree(e->GetQueueNext(), item, file, seen);
 
     switch(e->GetEventType())
     {
@@ -1293,10 +1379,8 @@ void EventWindow::AddEventToTree(const libcomp::String& id,
                     libcomp::String::Join(cMessage->GetLines(), "  "))) : "");
 
                 // Add regardless of next results
-                if(!choice->GetNext().IsEmpty())
-                {
-                    AddEventToTree(choice->GetNext(), cNode, file, seen);
-                }
+                AddEventToTree(choice->GetNext(), cNode, file, seen);
+                AddEventToTree(choice->GetQueueNext(), cNode, file, seen);
 
                 if(choice->BranchesCount() > 0)
                 {
@@ -1307,6 +1391,7 @@ void EventWindow::AddEventToTree(const libcomp::String& id,
                     for(auto b : choice->GetBranches())
                     {
                         AddEventToTree(b->GetNext(), bNode, file, seen);
+                        AddEventToTree(b->GetQueueNext(), bNode, file, seen);
                     }
                 }
             }
@@ -1367,7 +1452,322 @@ void EventWindow::AddEventToTree(const libcomp::String& id,
         for(auto b : e->GetBranches())
         {
             AddEventToTree(b->GetNext(), bNode, file, seen);
+            AddEventToTree(b->GetQueueNext(), bNode, file, seen);
         }
+    }
+}
+
+void EventWindow::ChangeEventIDs(const std::unordered_map<libcomp::String,
+    libcomp::String>& idMap)
+{
+    // Update all loaded events and actions within them
+    for(auto fPair : mFiles)
+    {
+        for(auto f : fPair.second->Events)
+        {
+            bool update = false;
+
+            auto e = f->Event;
+
+            // Pull base class casts for whatever we can since many fields
+            // are shared between sections
+            std::list<std::shared_ptr<objects::EventBase>> baseParts;
+            baseParts.push_back(e);
+
+            for(auto b : e->GetBranches())
+            {
+                baseParts.push_back(b);
+            }
+
+            switch(e->GetEventType())
+            {
+            case objects::Event::EventType_t::ITIME:
+                {
+                    auto iTime = std::dynamic_pointer_cast<
+                        objects::EventITime>(e);
+                    auto iter = idMap.find(iTime->GetStartActions());
+                    if(iter != idMap.end())
+                    {
+                        iTime->SetStartActions(iter->second);
+                        update = true;
+                    }
+                }
+                break;
+            case objects::Event::EventType_t::PERFORM_ACTIONS:
+                {
+                    auto pa = std::dynamic_pointer_cast<
+                        objects::EventPerformActions>(e);
+
+                    auto actions = pa->GetActions();
+                    update |= ChangeActionEventIDs(idMap, actions);
+                }
+                break;
+            case objects::Event::EventType_t::PROMPT:
+                {
+                    auto prompt = std::dynamic_pointer_cast<
+                        objects::EventPrompt>(e);
+                    for(auto choice : prompt->GetChoices())
+                    {
+                        baseParts.push_back(choice);
+                        for(auto b : choice->GetBranches())
+                        {
+                            baseParts.push_back(b);
+                        }
+                    }
+                }
+                break;
+            default:
+                break;
+            }
+
+            for(auto eBase : baseParts)
+            {
+                auto iter = idMap.find(eBase->GetNext());
+                if(iter != idMap.end())
+                {
+                    eBase->SetNext(iter->second);
+                    update = true;
+                }
+
+                iter = idMap.find(eBase->GetQueueNext());
+                if(iter != idMap.end())
+                {
+                    eBase->SetQueueNext(iter->second);
+                    update = true;
+                }
+            }
+
+            if(update)
+            {
+                f->HasUpdates = true;
+            }
+        }
+    }
+
+    // Update all loaded zone and partial actions
+    auto actions = mMainWindow->GetZones()->GetLoadedActions(true);
+    ChangeActionEventIDs(idMap, actions);
+}
+
+bool EventWindow::ChangeActionEventIDs(const std::unordered_map<
+    libcomp::String, libcomp::String>& idMap,
+    const std::list<std::shared_ptr<objects::Action>>& actions)
+{
+    bool updated = false;
+    auto currentActions = actions;
+
+    std::list<std::shared_ptr<objects::Action>> newActions;
+    while(currentActions.size() > 0)
+    {
+        // Actions can't nest forever so loop until we're done
+        for(auto action : currentActions)
+        {
+            switch(action->GetActionType())
+            {
+            case objects::Action::ActionType_t::DELAY:
+                {
+                    auto act = std::dynamic_pointer_cast<
+                        objects::ActionDelay>(action);
+                    for(auto act2 : act->GetActions())
+                    {
+                        newActions.push_back(act2);
+                    }
+                }
+                break;
+            case objects::Action::ActionType_t::SPAWN:
+                {
+                    auto act = std::dynamic_pointer_cast<
+                        objects::ActionSpawn>(action);
+                    for(auto act2 : act->GetDefeatActions())
+                    {
+                        newActions.push_back(act2);
+                    }
+                }
+                break;
+            case objects::Action::ActionType_t::START_EVENT:
+                {
+                    auto act = std::dynamic_pointer_cast<
+                        objects::ActionStartEvent>(action);
+                    auto iter = idMap.find(act->GetEventID());
+                    if(iter != idMap.end())
+                    {
+                        act->SetEventID(iter->second);
+                        updated = true;
+                    }
+                }
+                break;
+            case objects::Action::ActionType_t::ZONE_INSTANCE:
+                {
+                    auto act = std::dynamic_pointer_cast<
+                        objects::ActionZoneInstance>(action);
+                    auto iter = idMap.find(act->GetTimerExpirationEventID());
+                    if(iter != idMap.end())
+                    {
+                        act->SetTimerExpirationEventID(iter->second);
+                        updated = true;
+                    }
+                }
+                break;
+            default:
+                break;
+            }
+        }
+
+        currentActions = newActions;
+        newActions.clear();
+    }
+
+    return updated;
+}
+
+libcomp::String EventWindow::GetNewEventID(
+    const std::shared_ptr<EventFile>& file,
+    objects::Event::EventType_t eventType)
+{
+    // Suggest an ID that is not already taken based off current IDs in
+    // the file and cross checked against other loaded files
+    libcomp::String commonPrefix;
+
+    auto eIter = file->Events.begin();
+    if(eIter != file->Events.end())
+    {
+        commonPrefix = (*eIter)->Event->GetID();
+        eIter++;
+    }
+
+    for(; eIter != file->Events.end(); eIter++)
+    {
+        auto id = (*eIter)->Event->GetID();
+        while(commonPrefix.Length() > 0 &&
+            commonPrefix != id.Left(commonPrefix.Length()))
+        {
+            commonPrefix = commonPrefix.Left((size_t)(
+                commonPrefix.Length() - 1));
+        }
+
+        if(commonPrefix.Length() == 0)
+        {
+            // No common prefix
+            break;
+        }
+    }
+
+    if(commonPrefix.Length() > 0)
+    {
+        // Add type abbreviation and increase number until new ID is found
+        if(commonPrefix.Right(1) == "_")
+        {
+            // Remove double underscore
+            commonPrefix = commonPrefix.Left((size_t)(
+                commonPrefix.Length() - 1));
+        }
+
+        switch(eventType)
+        {
+        case objects::Event::EventType_t::NPC_MESSAGE:
+            commonPrefix += "_NM";
+            break;
+        case objects::Event::EventType_t::EX_NPC_MESSAGE:
+            commonPrefix += "_EX";
+            break;
+        case objects::Event::EventType_t::MULTITALK:
+            commonPrefix += "_ML";
+            break;
+        case objects::Event::EventType_t::PROMPT:
+            commonPrefix += "_PR";
+            break;
+        case objects::Event::EventType_t::PERFORM_ACTIONS:
+            commonPrefix += "_PA";
+            break;
+        case objects::Event::EventType_t::OPEN_MENU:
+            commonPrefix += "_ME";
+            break;
+        case objects::Event::EventType_t::PLAY_SCENE:
+            commonPrefix += "_SC";
+            break;
+        case objects::Event::EventType_t::DIRECTION:
+            commonPrefix += "_DR";
+            break;
+        case objects::Event::EventType_t::ITIME:
+            commonPrefix += "_IT";
+            break;
+        case objects::Event::EventType_t::FORK:
+        default:
+            commonPrefix += "_";
+            break;
+        }
+    }
+
+    libcomp::String suggestedID(commonPrefix);
+    if(suggestedID.Length() > 0)
+    {
+        // Add sequence number to the event and make sure its not already
+        // taken
+        bool validFound = false;
+        for(size_t i = 1; i < 1000; i++)
+        {
+            // Zero pad the number
+            auto str = libcomp::String("%1%2").Arg(suggestedID)
+                .Arg(libcomp::String("%1").Arg(1000 + i).Right(3));
+            if(mGlobalIDMap.find(str) == mGlobalIDMap.end())
+            {
+                suggestedID = str;
+                validFound = true;
+                break;
+            }
+        }
+
+        if(!validFound)
+        {
+            // No suggested ID
+            suggestedID.Clear();
+        }
+    }
+
+    libcomp::String eventID;
+    while(true)
+    {
+        QString qEventID = QInputDialog::getText(this, "Enter an ID", "New ID",
+            QLineEdit::Normal, qs(suggestedID));
+        if(qEventID.isEmpty())
+        {
+            return "";
+        }
+
+        eventID = cs(qEventID);
+
+        auto globalIter = mGlobalIDMap.find(eventID);
+        if(globalIter != mGlobalIDMap.end())
+        {
+            QMessageBox err;
+            err.setText(qs(libcomp::String("Event ID '%1' already exists in"
+                " file: %2").Arg(eventID).Arg(globalIter->second)));
+            err.exec();
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return eventID;
+}
+
+void EventWindow::RebuildLocalIDMap(const std::shared_ptr<EventFile>& file)
+{
+    file->EventIDMap.clear();
+
+    int32_t idx = 0;
+    for(auto fEvent : file->Events)
+    {
+        auto e = fEvent->Event;
+        if(file->EventIDMap.find(e->GetID()) == file->EventIDMap.end())
+        {
+            // Don't add it twice
+            file->EventIDMap[e->GetID()] = idx;
+        }
+
+        idx++;
     }
 }
 
@@ -1385,230 +1785,6 @@ void EventWindow::RebuildGlobalIDMap()
             {
                 mGlobalIDMap[eventID] = file->Path;
             }
-        }
-    }
-}
-
-void EventWindow::SimplifyObjectXML(std::list<tinyxml2::XMLNode*> nodes)
-{
-    // Collect all object nodes and simplify by removing defaulted fields.
-    // Also remove CDATA blocks as events are not complicated enough to
-    // benefit from it.
-    std::set<tinyxml2::XMLNode*> currentNodes;
-    std::set<tinyxml2::XMLNode*> objectNodes;
-    for(auto node : nodes)
-    {
-        currentNodes.insert(node);
-    }
-
-    while(currentNodes.size() > 0)
-    {
-        auto node = *currentNodes.begin();
-        currentNodes.erase(node);
-
-        if(libcomp::String(node->ToElement()->Name()) == "object")
-        {
-            objectNodes.insert(node);
-        }
-
-        auto child = node->FirstChild();
-        while(child)
-        {
-            auto txt = child->ToText();
-            if(txt)
-            {
-                txt->SetCData(false);
-            }
-            else
-            {
-                currentNodes.insert(child);
-            }
-
-            child = child->NextSibling();
-        }
-    }
-
-    if(objectNodes.size() == 0)
-    {
-        return;
-    }
-
-    // Create an empty template object for each type encountered for comparison
-    tinyxml2::XMLDocument templateDoc;
-    std::unordered_map<libcomp::String, std::unordered_map<libcomp::String,
-        tinyxml2::XMLNode*>> templateMembers;
-    std::unordered_map<libcomp::String, libcomp::String> templateLowerMembers;
-
-    auto rootElem = templateDoc.NewElement("objects");
-    templateDoc.InsertEndChild(rootElem);
-
-    for(auto objNode : objectNodes)
-    {
-        libcomp::String objType(objNode->ToElement()->Attribute("name"));
-
-        auto templateIter = templateMembers.find(objType);
-        if(templateIter == templateMembers.end())
-        {
-            std::shared_ptr<libcomp::Object> obj;
-            if(objType == "EventBase")
-            {
-                obj = std::make_shared<objects::EventBase>();
-                templateLowerMembers[objType] = "popNext";
-            }
-            else if(objType == "EventChoice")
-            {
-                obj = std::make_shared<objects::EventChoice>();
-                templateLowerMembers[objType] = "branchScriptParams";
-            }
-            else if(objType.Left(6) == "Action")
-            {
-                // Action derived
-                obj = objects::Action::InheritedConstruction(objType);
-                templateLowerMembers[objType] = "transformScriptParams";
-            }
-            else if(objType.Left(5) == "Event")
-            {
-                if(objType.Right(9) == "Condition")
-                {
-                    // EventCondition derived
-                    obj = objects::EventCondition::InheritedConstruction(
-                        objType);
-                }
-                else
-                {
-                    // Event derived
-                    obj = objects::Event::InheritedConstruction(objType);
-                    templateLowerMembers[objType] = "transformScriptParams";
-                }
-            }
-
-            if(obj)
-            {
-                obj->Save(templateDoc, *rootElem);
-
-                auto tNode = rootElem->LastChild();
-
-                std::unordered_map<libcomp::String,
-                    tinyxml2::XMLNode*> tMembers;
-                auto child = tNode->FirstChild();
-                while(child)
-                {
-                    auto elem = child->ToElement();
-                    if(elem && libcomp::String(elem->Name()) == "member")
-                    {
-                        // Remove CDATA here too
-                        auto gChild = child->FirstChild();
-                        auto txt = gChild ? gChild->ToText() : 0;
-                        if(txt && txt->CData())
-                        {
-                            txt->SetCData(false);
-                        }
-
-                        libcomp::String memberName(elem->Attribute("name"));
-                        tMembers[memberName] = child;
-                    }
-
-                    child = child->NextSibling();
-                }
-
-                templateMembers[objType] = tMembers;
-                templateIter = templateMembers.find(objType);
-            }
-            else
-            {
-                // No simplification
-                continue;
-            }
-        }
-
-        auto& tMembers = templateIter->second;
-
-        auto lowerIter = templateLowerMembers.find(objType);
-        if(lowerIter != templateLowerMembers.end())
-        {
-            // Move the ID to the top (if it exists) and move less important
-            // base properties to the bottom
-            std::set<libcomp::String> seen;
-
-            auto child = objNode->FirstChild();
-            while(child)
-            {
-                auto next = child->NextSibling();
-
-                libcomp::String memberName(child->ToElement()
-                    ->Attribute("name"));
-                bool last = memberName == lowerIter->second || !next ||
-                    seen.find(memberName) != seen.end();
-
-                seen.insert(memberName);
-
-                if(memberName == "ID")
-                {
-                    // Move to the top
-                    objNode->InsertFirstChild(child);
-                }
-                else if(!last &&
-                    memberName != "next" && memberName != "queueNext")
-                {
-                    // Move all others to the bottom
-                    objNode->InsertEndChild(child);
-                }
-
-                if(last)
-                {
-                    break;
-                }
-                else
-                {
-                    child = next;
-                }
-            }
-        }
-
-        if(objType == "EventBase")
-        {
-            // EventBase is used for the branch structure which does not need
-            // the object identifier and often times these can be very simple
-            // so drop it here.
-            objNode->ToElement()->DeleteAttribute("name");
-        }
-
-        // Drop matching level 1 child nodes (anything further down should not
-        // be simplified anyway)
-        auto child = objNode->FirstChild();
-        while(child)
-        {
-            auto next = child->NextSibling();
-
-            auto elem = child->ToElement();
-            if(elem)
-            {
-                libcomp::String memberName(elem->Attribute("name"));
-
-                auto iter = tMembers.find(memberName);
-                if(iter != tMembers.end())
-                {
-                    auto child2 = iter->second;
-
-                    auto gc = child->FirstChild();
-                    auto gc2 = child2->FirstChild();
-
-                    auto txt = gc ? gc->ToText() : 0;
-                    auto txt2 = gc2 ? gc2->ToText() : 0;
-
-                    // If both have no child or both have the same text
-                    // representation, the nodes match
-                    if((gc == 0 && gc2 == 0) || (txt && txt2 &&
-                        libcomp::String(txt->Value()) ==
-                        libcomp::String(txt2->Value())))
-                    {
-                        // Default value matches, drop node
-                        objNode->DeleteChild(child);
-                    }
-                }
-            }
-
-            child = next;
         }
     }
 }

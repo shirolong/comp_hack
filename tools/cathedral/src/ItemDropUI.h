@@ -47,12 +47,15 @@ class ItemDrop;
 
 } // namespace Ui
 
+class MainWindow;
+
 class ItemDrop : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit ItemDrop(QWidget *pParent = 0);
+    explicit ItemDrop(MainWindow *pMainWindow,
+        QWidget *pParent = 0);
     virtual ~ItemDrop();
 
     void Load(const std::shared_ptr<objects::ItemDrop>& drop);

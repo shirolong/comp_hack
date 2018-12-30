@@ -27,7 +27,7 @@
 
 // Qt Includes
 #include <PushIgnore.h>
-#include <QWidget>
+#include <QMainWindow>
 #include <PopIgnore.h>
 
 // libcomp Includes
@@ -35,15 +35,12 @@
 #include <DataStore.h>
 #include <DefinitionManager.h>
 
-// objects Includes
-#include <ServerZone.h>
-
 namespace objects
 {
 
 class MiCEventMessageData;
 
-}
+} // namespace objects
 
 namespace Ui
 {
@@ -53,10 +50,10 @@ class MainWindow;
 } // namespace Ui
 
 class EventWindow;
-class NPCListWindow;
-class SpotListWindow;
+class ObjectSelectorWindow;
+class ZoneWindow;
 
-class MainWindow : public QWidget
+class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
@@ -70,44 +67,59 @@ public:
     std::shared_ptr<libcomp::DefinitionManager> GetDefinitions() const;
 
     EventWindow* GetEvents() const;
-    NPCListWindow* GetNPCList() const;
-    SpotListWindow* GetSpotList() const;
+    ZoneWindow* GetZones() const;
 
     std::shared_ptr<objects::MiCEventMessageData> GetEventMessage(
         int32_t msgID) const;
+
+    std::shared_ptr<libcomp::BinaryDataSet> GetBinaryDataSet(
+        const libcomp::String& objType) const;
+
+    void RegisterBinaryDataSet(const libcomp::String& objType,
+        const std::shared_ptr<libcomp::BinaryDataSet>& dataset,
+        bool createSelector = true);
+
+    ObjectSelectorWindow* GetObjectSelector(
+        const libcomp::String& objType) const;
+
+    void UpdateActiveZone(const libcomp::String& path);
 
     void ResetEventCount();
 
 protected slots:
     void OpenEvents();
-    void OpenNPCs();
-    void OpenSpots();
+    void OpenZone();
+    void ViewObjectList();
 
 protected:
-    void ReloadZoneData();
+    bool LoadBinaryData(const libcomp::String& binaryFile,
+        const libcomp::String& objName, bool decrypt, bool addSelector = false,
+        bool selectorAllowBlanks = false);
 
-    bool LoadCMessageData(std::shared_ptr<libcomp::BinaryDataSet>& dataset,
-        const libcomp::String& file);
+    void CloseAllWindows();
+
+    void closeEvent(QCloseEvent* event) override;
 
 private slots:
     void BrowseZone();
 
 protected:
     EventWindow *mEventWindow;
-    NPCListWindow *mNPCWindow;
-    SpotListWindow *mSpotWindow;
+    ZoneWindow *mZoneWindow;
 
 private:
     Ui::MainWindow *ui;
 
     std::shared_ptr<libcomp::DataStore> mDatastore;
     std::shared_ptr<libcomp::DefinitionManager> mDefinitions;
+    
+    std::unordered_map<libcomp::String,
+        std::shared_ptr<libcomp::BinaryDataSet>> mBinaryDataSets;
 
-    std::shared_ptr<libcomp::BinaryDataSet> mCEventMessageData;
-    std::shared_ptr<libcomp::BinaryDataSet> mCEventMessageData2;
+    std::unordered_map<libcomp::String,
+        ObjectSelectorWindow*> mObjectSelectors;
 
-    QString mActiveZonePath;
-    std::shared_ptr<objects::ServerZone> mActiveZone;
+    libcomp::String mActiveZonePath;
 };
 
 static inline QString qs(const libcomp::String& s)

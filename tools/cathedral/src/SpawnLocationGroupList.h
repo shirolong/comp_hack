@@ -1,10 +1,10 @@
 /**
- * @file tools/cathedral/src/NPCListWindow.h
+ * @file tools/cathedral/src/SpawnLocationGroupList.h
  * @ingroup cathedral
  *
- * @author COMP Omega <compomega@tutanota.com>
+ * @author HACKfrost
  *
- * @brief Definition for a window that holds a list of NPCs.
+ * @brief Definition for a control that holds a list of spawn location groups.
  *
  * Copyright (C) 2012-2018 COMP_hack Team <compomega@tutanota.com>
  *
@@ -22,25 +22,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef TOOLS_CATHEDRAL_SRC_NPCLISTWINDOW_H
-#define TOOLS_CATHEDRAL_SRC_NPCLISTWINDOW_H
+#ifndef TOOLS_CATHEDRAL_SRC_SPAWNLOCATIONGROUPLIST_H
+#define TOOLS_CATHEDRAL_SRC_SPAWNLOCATIONGROUPLIST_H
 
-#include "ObjectListWindow.h"
+#include "ObjectList.h"
 
 namespace Ui
 {
 
-class NPCProperties;
+class SpawnLocationGroup;
 
 } // namespace Ui
 
-class NPCListWindow : public ObjectListWindow
+class SpawnLocationGroupList : public ObjectList
 {
     Q_OBJECT
 
 public:
-    explicit NPCListWindow(MainWindow *pMainWindow, QWidget *pParent = 0);
-    virtual ~NPCListWindow();
+    explicit SpawnLocationGroupList(QWidget *pParent = 0);
+    virtual ~SpawnLocationGroupList();
+
+    virtual void SetMainWindow(MainWindow *pMainWindow);
 
     QString GetObjectID(const std::shared_ptr<
         libcomp::Object>& obj) const override;
@@ -50,11 +52,8 @@ public:
     void LoadProperties(const std::shared_ptr<libcomp::Object>& obj) override;
     void SaveProperties(const std::shared_ptr<libcomp::Object>& obj) override;
 
-public slots:
-    void ResetSpotList();
-
 protected:
-    Ui::NPCProperties *prop;
+    Ui::SpawnLocationGroup *prop;
 };
 
-#endif // TOOLS_CATHEDRAL_SRC_NPCLISTWINDOW_H
+#endif // TOOLS_CATHEDRAL_SRC_SPAWNLOCATIONGROUPLIST_H

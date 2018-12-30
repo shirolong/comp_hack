@@ -33,12 +33,16 @@
 #include "ItemDropUI.h"
 #include "MainWindow.h"
 #include "ObjectPositionUI.h"
+#include "ObjectSelector.h"
+#include <SpawnLocationUI.h>
+#include <ZoneTriggerUI.h>
 
 // Qt Includes
 #include <PushIgnore.h>
-#include <QtWidgets/QFormLayout>
-#include <QtWidgets/QSpinBox>
-#include <QtWidgets/QLineEdit>
+#include <QFormLayout>
+#include <QSpinBox>
+#include <QLineEdit>
+#include <QTextEdit>
 
 #include "ui_DynamicList.h"
 #include "ui_DynamicListItem.h"
@@ -50,6 +54,8 @@
 #include <EventCondition.h>
 #include <ItemDrop.h>
 #include <ObjectPosition.h>
+#include <ServerZoneTrigger.h>
+#include <SpawnLocation.h>
 
 // libcomp Includes
 #include <Log.h>
@@ -69,12 +75,18 @@ DynamicList::~DynamicList()
     delete ui;
 }
 
-void DynamicList::Setup(DynamicItemType_t type, MainWindow *pMainWindow)
+void DynamicList::Setup(DynamicItemType_t type, MainWindow *pMainWindow,
+    const libcomp::String& objectSelectorType)
 {
     if(mType == DynamicItemType_t::NONE)
     {
         mType = type;
         mMainWindow = pMainWindow;
+
+        if(type == DynamicItemType_t::COMPLEX_OBJECT_SELECTOR)
+        {
+            mObjectSelectorType = objectSelectorType;
+        }
     }
     else
     {
@@ -126,18 +138,30 @@ QWidget* DynamicList::GetIntegerWidget(int32_t val)
 
 bool DynamicList::AddUnsignedInteger(uint32_t val)
 {
-    if(mType != DynamicItemType_t::PRIMITIVE_UINT)
+    if(mType == DynamicItemType_t::COMPLEX_OBJECT_SELECTOR)
     {
-        LOG_ERROR("Attempted to assign a unsigned integer value to a"
-            " differing DynamicList type\n");
-        return false;
+        auto ctrl = GetObjectSelectorWidget(val);
+        if(ctrl)
+        {
+            AddItem(ctrl, true);
+            return true;
+        }
     }
-
-    auto ctrl = GetUnsignedIntegerWidget(val);
-    if(ctrl)
+    else
     {
-        AddItem(ctrl, false);
-        return true;
+        if(mType != DynamicItemType_t::PRIMITIVE_UINT)
+        {
+            LOG_ERROR("Attempted to assign a unsigned integer value to a"
+                " differing DynamicList type\n");
+            return false;
+        }
+
+        auto ctrl = GetUnsignedIntegerWidget(val);
+        if(ctrl)
+        {
+            AddItem(ctrl, false);
+            return true;
+        }
     }
 
     return false;
@@ -156,14 +180,16 @@ QWidget* DynamicList::GetUnsignedIntegerWidget(uint32_t val)
 
 bool DynamicList::AddString(const libcomp::String& val)
 {
-    if(mType != DynamicItemType_t::PRIMITIVE_STRING)
+    if(mType != DynamicItemType_t::PRIMITIVE_STRING &&
+        mType != DynamicItemType_t::PRIMITIVE_MULTILINE_STRING)
     {
         LOG_ERROR("Attempted to assign a string value to a differing"
             " DynamicList type\n");
         return false;
     }
 
-    auto ctrl = GetStringWidget(val);
+    auto ctrl = GetStringWidget(val,
+        mType == DynamicItemType_t::PRIMITIVE_MULTILINE_STRING);
     if(ctrl)
     {
         AddItem(ctrl, false);
@@ -173,14 +199,27 @@ bool DynamicList::AddString(const libcomp::String& val)
     return false;
 }
 
-QWidget* DynamicList::GetStringWidget(const libcomp::String& val)
+QWidget* DynamicList::GetStringWidget(const libcomp::String& val,
+    bool multiline)
 {
-    QLineEdit* txt = new QLineEdit;
-    txt->setPlaceholderText("[Empty]");
+    if(multiline)
+    {
+        QTextEdit* txt = new QTextEdit;
+        txt->setPlaceholderText("[Empty]");
 
-    txt->setText(qs(val));
+        txt->setText(qs(val));
 
-    return txt;
+        return txt;
+    }
+    else
+    {
+        QLineEdit* txt = new QLineEdit;
+        txt->setPlaceholderText("[Empty]");
+
+        txt->setText(qs(val));
+
+        return txt;
+    }
 }
 
 template<>
@@ -255,7 +294,7 @@ template<>
 QWidget* DynamicList::GetObjectWidget<objects::EventCondition>(
     const std::shared_ptr<objects::EventCondition>& obj)
 {
-    EventCondition* ctrl = new EventCondition;
+    EventCondition* ctrl = new EventCondition(mMainWindow);
     if(obj)
     {
         ctrl->Load(obj);
@@ -289,7 +328,7 @@ template<>
 QWidget* DynamicList::GetObjectWidget<objects::ItemDrop>(
     const std::shared_ptr<objects::ItemDrop>& obj)
 {
-    ItemDrop* ctrl = new ItemDrop;
+    ItemDrop* ctrl = new ItemDrop(mMainWindow);
     if(obj)
     {
         ctrl->Load(obj);
@@ -353,14 +392,92 @@ bool DynamicList::AddObject<objects::ObjectPosition>(
     return false;
 }
 
+template<>
+QWidget* DynamicList::GetObjectWidget<objects::SpawnLocation>(
+    const std::shared_ptr<objects::SpawnLocation>& obj)
+{
+    SpawnLocation* ctrl = new SpawnLocation;
+    if(obj)
+    {
+        ctrl->Load(obj);
+    }
+
+    return ctrl;
+}
+
+template<>
+bool DynamicList::AddObject<objects::SpawnLocation>(
+    const std::shared_ptr<objects::SpawnLocation>& obj)
+{
+    if(mType != DynamicItemType_t::OBJ_SPAWN_LOCATION)
+    {
+        LOG_ERROR("Attempted to assign an SpawnLocation object to a differing"
+            " DynamicList type\n");
+        return false;
+    }
+
+    auto ctrl = GetObjectWidget(obj);
+    if(ctrl)
+    {
+        AddItem(ctrl, true);
+        return true;
+    }
+
+    return false;
+}
+
+template<>
+QWidget* DynamicList::GetObjectWidget<objects::ServerZoneTrigger>(
+    const std::shared_ptr<objects::ServerZoneTrigger>& obj)
+{
+    ZoneTrigger* ctrl = new ZoneTrigger(mMainWindow);
+    if(obj)
+    {
+        ctrl->Load(obj);
+    }
+
+    return ctrl;
+}
+
+template<>
+bool DynamicList::AddObject<objects::ServerZoneTrigger>(
+    const std::shared_ptr<objects::ServerZoneTrigger>& obj)
+{
+    if(mType != DynamicItemType_t::OBJ_ZONE_TRIGGER)
+    {
+        LOG_ERROR("Attempted to assign an ServerZoneTrigger object to a"
+            " differing DynamicList type\n");
+        return false;
+    }
+
+    auto ctrl = GetObjectWidget(obj);
+    if(ctrl)
+    {
+        AddItem(ctrl, true);
+        return true;
+    }
+
+    return false;
+}
+
 QWidget* DynamicList::GetEventMessageWidget(int32_t val)
 {
     EventMessageRef* msg = new EventMessageRef;
     msg->SetMainWindow(mMainWindow);
 
-    msg->SetValue(val);
+    msg->SetValue((uint32_t)val);
 
     return msg;
+}
+
+QWidget* DynamicList::GetObjectSelectorWidget(uint32_t val)
+{
+    ObjectSelector* sel = new ObjectSelector;
+    sel->Bind(mMainWindow, mObjectSelectorType);
+
+    sel->SetValue(val);
+
+    return sel;
 }
 
 std::list<int32_t> DynamicList::GetIntegerList() const
@@ -371,9 +488,9 @@ std::list<int32_t> DynamicList::GetIntegerList() const
         int total = ui->layoutItems->count();
         for(int childIdx = 0; childIdx < total; childIdx++)
         {
-            EventMessageRef* spin = ui->layoutItems->itemAt(childIdx)->widget()
+            EventMessageRef* ref = ui->layoutItems->itemAt(childIdx)->widget()
                 ->findChild<EventMessageRef*>();
-            result.push_back(spin->GetValue());
+            result.push_back((int32_t)ref->GetValue());
         }
     }
     else
@@ -400,19 +517,32 @@ std::list<int32_t> DynamicList::GetIntegerList() const
 std::list<uint32_t> DynamicList::GetUnsignedIntegerList() const
 {
     std::list<uint32_t> result;
-    if(mType != DynamicItemType_t::PRIMITIVE_UINT)
+    if(mType == DynamicItemType_t::COMPLEX_OBJECT_SELECTOR)
     {
-        LOG_ERROR("Attempted to retrieve unsigned integer list from a differing"
-            " DynamicList type\n");
-        return result;
+        int total = ui->layoutItems->count();
+        for(int childIdx = 0; childIdx < total; childIdx++)
+        {
+            ObjectSelector* sel = ui->layoutItems->itemAt(childIdx)->widget()
+                ->findChild<ObjectSelector*>();
+            result.push_back(sel->GetValue());
+        }
     }
-
-    int total = ui->layoutItems->count();
-    for(int childIdx = 0; childIdx < total; childIdx++)
+    else
     {
-        QSpinBox* spin = ui->layoutItems->itemAt(childIdx)->widget()
-            ->findChild<QSpinBox*>();
-        result.push_back((uint32_t)spin->value());
+        if(mType != DynamicItemType_t::PRIMITIVE_UINT)
+        {
+            LOG_ERROR("Attempted to retrieve unsigned integer list from a"
+                " differing DynamicList type\n");
+            return result;
+        }
+
+        int total = ui->layoutItems->count();
+        for(int childIdx = 0; childIdx < total; childIdx++)
+        {
+            QSpinBox* spin = ui->layoutItems->itemAt(childIdx)->widget()
+                ->findChild<QSpinBox*>();
+            result.push_back((uint32_t)spin->value());
+        }
     }
 
     return result;
@@ -420,20 +550,33 @@ std::list<uint32_t> DynamicList::GetUnsignedIntegerList() const
 
 std::list<libcomp::String> DynamicList::GetStringList() const
 {
+    bool singleLine = mType == DynamicItemType_t::PRIMITIVE_STRING;
+    bool multiLine = mType == DynamicItemType_t::PRIMITIVE_MULTILINE_STRING;
+
     std::list<libcomp::String> result;
-    if(mType != DynamicItemType_t::PRIMITIVE_STRING)
+    if(!singleLine && !multiLine)
     {
         LOG_ERROR("Attempted to retrieve a string list from a differing"
             " DynamicList type\n");
         return result;
     }
-    
+
     int total = ui->layoutItems->count();
     for(int childIdx = 0; childIdx < total; childIdx++)
     {
-        QLineEdit* txt = ui->layoutItems->itemAt(childIdx)->widget()
-            ->findChild<QLineEdit*>();
-        result.push_back(libcomp::String(txt->text().toStdString()));
+        if(singleLine)
+        {
+            QLineEdit* txt = ui->layoutItems->itemAt(childIdx)->widget()
+                ->findChild<QLineEdit*>();
+            result.push_back(libcomp::String(txt->text().toStdString()));
+        }
+        else
+        {
+            QTextEdit* txt = ui->layoutItems->itemAt(childIdx)->widget()
+                ->findChild<QTextEdit*>();
+            result.push_back(libcomp::String(txt->toPlainText()
+                .toStdString()));
+        }
     }
 
     return result;
@@ -554,6 +697,63 @@ std::list<std::shared_ptr<objects::ObjectPosition>>
     return result;
 }
 
+template<>
+std::list<std::shared_ptr<objects::ServerZoneTrigger>>
+    DynamicList::GetObjectList() const
+{
+    std::list<std::shared_ptr<objects::ServerZoneTrigger>> result;
+    if(mType != DynamicItemType_t::OBJ_ZONE_TRIGGER)
+    {
+        LOG_ERROR("Attempted to retrieve a ServerZoneTrigger list from a"
+            " differing DynamicList type\n");
+        return result;
+    }
+
+    int total = ui->layoutItems->count();
+    for(int childIdx = 0; childIdx < total; childIdx++)
+    {
+        ZoneTrigger* ctrl = ui->layoutItems->itemAt(childIdx)->widget()
+            ->findChild<ZoneTrigger*>();
+        result.push_back(ctrl->Save());
+    }
+
+    return result;
+}
+
+template<>
+std::list<std::shared_ptr<objects::SpawnLocation>>
+    DynamicList::GetObjectList() const
+{
+    std::list<std::shared_ptr<objects::SpawnLocation>> result;
+    if(mType != DynamicItemType_t::OBJ_SPAWN_LOCATION)
+    {
+        LOG_ERROR("Attempted to retrieve a SpawnLocation list from a"
+            " differing DynamicList type\n");
+        return result;
+    }
+
+    int total = ui->layoutItems->count();
+    for(int childIdx = 0; childIdx < total; childIdx++)
+    {
+        SpawnLocation* ctrl = ui->layoutItems->itemAt(childIdx)->widget()
+            ->findChild<SpawnLocation*>();
+        result.push_back(ctrl->Save());
+    }
+
+    return result;
+}
+
+void DynamicList::Clear()
+{
+    auto items = findChildren<DynamicListItem*>();
+    for(auto item : items)
+    {
+        ui->layoutItems->removeWidget(item);
+
+        item->deleteLater();
+    }
+}
+
 void DynamicList::AddRow()
 {
     bool canReorder = false;
@@ -568,10 +768,17 @@ void DynamicList::AddRow()
         ctrl = GetUnsignedIntegerWidget(0);
         break;
     case DynamicItemType_t::PRIMITIVE_STRING:
-        ctrl = GetStringWidget("");
+        ctrl = GetStringWidget("", false);
+        break;
+    case DynamicItemType_t::PRIMITIVE_MULTILINE_STRING:
+        ctrl = GetStringWidget("", true);
         break;
     case DynamicItemType_t::COMPLEX_EVENT_MESSAGE:
         ctrl = GetEventMessageWidget(0);
+        canReorder = true;
+        break;
+    case DynamicItemType_t::COMPLEX_OBJECT_SELECTOR:
+        ctrl = GetObjectSelectorWidget(0);
         canReorder = true;
         break;
     case DynamicItemType_t::OBJ_EVENT_BASE:
@@ -594,6 +801,14 @@ void DynamicList::AddRow()
         break;
     case DynamicItemType_t::OBJ_OBJECT_POSITION:
         ctrl = GetObjectWidget<objects::ObjectPosition>(nullptr);
+        canReorder = true;
+        break;
+    case DynamicItemType_t::OBJ_SPAWN_LOCATION:
+        ctrl = GetObjectWidget<objects::SpawnLocation>(nullptr);
+        canReorder = true;
+        break;
+    case DynamicItemType_t::OBJ_ZONE_TRIGGER:
+        ctrl = GetObjectWidget<objects::ServerZoneTrigger>(nullptr);
         canReorder = true;
         break;
     case DynamicItemType_t::NONE:

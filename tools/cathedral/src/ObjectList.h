@@ -1,10 +1,10 @@
 /**
- * @file tools/cathedral/src/ObjectListWindow.h
+ * @file tools/cathedral/src/ObjectList.h
  * @ingroup cathedral
  *
  * @author COMP Omega <compomega@tutanota.com>
  *
- * @brief Definition for a window that holds a list of objgen objects.
+ * @brief Definition for a list of objgen objects.
  *
  * Copyright (C) 2012-2018 COMP_hack Team <compomega@tutanota.com>
  *
@@ -22,8 +22,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef TOOLS_CATHEDRAL_SRC_OBJECTLISTWINDOW_H
-#define TOOLS_CATHEDRAL_SRC_OBJECTLISTWINDOW_H
+#ifndef TOOLS_CATHEDRAL_SRC_OBJECTLIST_H
+#define TOOLS_CATHEDRAL_SRC_OBJECTLIST_H
 
 // Qt Includes
 #include <PushIgnore.h>
@@ -36,7 +36,7 @@
 namespace Ui
 {
 
-class ObjectListWindow;
+class ObjectList;
 
 } // namespace Ui
 
@@ -44,13 +44,15 @@ class MainWindow;
 class ObjectListModel;
 class QSortFilterProxyModel;
 
-class ObjectListWindow : public QWidget
+class ObjectList : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit ObjectListWindow(MainWindow *pMainWindow, QWidget *pParent = 0);
-    virtual ~ObjectListWindow();
+    explicit ObjectList(QWidget *pParent = 0);
+    virtual ~ObjectList();
+
+    virtual void SetMainWindow(MainWindow *pMainWindow);
 
     virtual void SetObjectList(const std::vector<
         std::shared_ptr<libcomp::Object>>& objs);
@@ -60,10 +62,21 @@ public:
     virtual QString GetObjectName(const std::shared_ptr<
         libcomp::Object>& obj) const;
 
+    bool Select(const std::shared_ptr<libcomp::Object>& obj);
+
     virtual void LoadProperties(const std::shared_ptr<libcomp::Object>& obj);
     virtual void SaveProperties(const std::shared_ptr<libcomp::Object>& obj);
 
+    std::shared_ptr<libcomp::Object> GetActiveObject();
+
+    void SaveActiveProperties();
+
     std::map<uint32_t, QString> GetObjectMapping() const;
+
+    void SetReadOnly(bool readOnly);
+
+signals:
+    void selectedObjectChanged();
 
 public slots:
     virtual void Search(const QString& term);
@@ -76,7 +89,9 @@ protected:
 
     std::weak_ptr<libcomp::Object> mActiveObject;
 
-    Ui::ObjectListWindow *ui;
+    Ui::ObjectList *ui;
+
+    bool mReadOnly;
 };
 
-#endif // TOOLS_CATHEDRAL_SRC_OBJECTLISTWINDOW_H
+#endif // TOOLS_CATHEDRAL_SRC_OBJECTLIST_H
