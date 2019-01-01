@@ -11,6 +11,22 @@
 
 ## 真・女神転生IMAGINE Private Server ##
 
+### Cerberus Rebirth Status ###
+| Type                                                                           | Rank            |
+| ------------------------------------------------------------------------------ | --------------- |
+| [Tiwaz](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-tiwaz)     | ■ □ □ □ □ □ □ □ |
+| [Peorth](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-peorth)   | □ □ □ □ □ □ □ □ |
+| [Eoh](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-eoh)         | □ □ □ □ □ □ □ □ |
+| [Eihwaz](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-eihwaz)   | □ □ □ □ □ □ □ □ |
+| [Uruz](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-uruz)       | □ □ □ □ □ □ □ □ |
+| [Hagalaz](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-hagalaz) | □ □ □ □ □ □ □ □ |
+| [Laguz](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-laguz)     | □ □ □ □ □ □ □ □ |
+| [Ansuz](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-ansuz)     | □ □ □ □ □ □ □ □ |
+| [Nauthiz](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-nauthiz) | □ □ □ □ □ □ □ □ |
+| [Ingwaz](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-ingwaz)   | □ □ □ □ □ □ □ □ |
+| [Sigel](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-sigel)     | □ □ □ □ □ □ □ □ |
+| [Wyrd](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-wyrd)       | □ □ □ □ □ □ □ □ |
+
 The is server software to revive an MMO that has been shutdown (SMT: IMAGINE). It's a complete re-implementation of the server from scratch and fully open source. The best place for documentation is the [Definitive Guide](https://comphack.github.io/guide/) so be sure to check it out.
 
 ### Building on Linux ###
