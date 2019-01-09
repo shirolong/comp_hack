@@ -34,8 +34,9 @@
 #include "MainWindow.h"
 #include "ObjectPositionUI.h"
 #include "ObjectSelector.h"
-#include <SpawnLocationUI.h>
-#include <ZoneTriggerUI.h>
+#include "SpawnLocationUI.h"
+#include "SpotRef.h"
+#include "ZoneTriggerUI.h"
 
 // Qt Includes
 #include <PushIgnore.h>
@@ -62,7 +63,7 @@
 #include <Object.h>
 
 DynamicList::DynamicList(QWidget *pParent) : QWidget(pParent),
-    mType(DynamicItemType_t::NONE)
+    mType(DynamicItemType_t::NONE), mSelectorServerData(false)
 {
     ui = new Ui::DynamicList;
     ui->setupUi(this);
@@ -76,7 +77,7 @@ DynamicList::~DynamicList()
 }
 
 void DynamicList::Setup(DynamicItemType_t type, MainWindow *pMainWindow,
-    const libcomp::String& objectSelectorType)
+    const libcomp::String& objectSelectorType, bool selectorServerData)
 {
     if(mType == DynamicItemType_t::NONE)
     {
@@ -86,12 +87,18 @@ void DynamicList::Setup(DynamicItemType_t type, MainWindow *pMainWindow,
         if(type == DynamicItemType_t::COMPLEX_OBJECT_SELECTOR)
         {
             mObjectSelectorType = objectSelectorType;
+            mSelectorServerData = selectorServerData;
         }
     }
     else
     {
         LOG_ERROR("Attempted to set a DynamicList item type twice\n");
     }
+}
+
+void DynamicList::SetAddText(const libcomp::String& text)
+{
+    ui->lblAddText->setText(qs(text));
 }
 
 bool DynamicList::AddInteger(int32_t val)
@@ -144,6 +151,15 @@ bool DynamicList::AddUnsignedInteger(uint32_t val)
         if(ctrl)
         {
             AddItem(ctrl, true);
+            return true;
+        }
+    }
+    else if(mType == DynamicItemType_t::COMPLEX_SPOT)
+    {
+        auto ctrl = GetSpotWidget(val);
+        if(ctrl)
+        {
+            AddItem(ctrl, false);
             return true;
         }
     }
@@ -260,7 +276,8 @@ template<>
 QWidget* DynamicList::GetObjectWidget<objects::EventChoice>(
     const std::shared_ptr<objects::EventChoice>& obj)
 {
-    EventChoice* ctrl = new EventChoice(mMainWindow);
+    EventChoice* ctrl = new EventChoice(mMainWindow,
+        mType == DynamicItemType_t::OBJ_EVENT_ITIME_CHOICE);
     if(obj)
     {
         ctrl->Load(obj);
@@ -273,7 +290,8 @@ template<>
 bool DynamicList::AddObject<objects::EventChoice>(
     const std::shared_ptr<objects::EventChoice>& obj)
 {
-    if(mType != DynamicItemType_t::OBJ_EVENT_CHOICE)
+    if(mType != DynamicItemType_t::OBJ_EVENT_CHOICE &&
+        mType != DynamicItemType_t::OBJ_EVENT_ITIME_CHOICE)
     {
         LOG_ERROR("Attempted to assign an EventChoice object to a differing"
             " DynamicList type\n");
@@ -363,6 +381,8 @@ QWidget* DynamicList::GetObjectWidget<objects::ObjectPosition>(
     const std::shared_ptr<objects::ObjectPosition>& obj)
 {
     ObjectPosition* ctrl = new ObjectPosition;
+    ctrl->SetMainWindow(mMainWindow);
+
     if(obj)
     {
         ctrl->Load(obj);
@@ -463,7 +483,7 @@ bool DynamicList::AddObject<objects::ServerZoneTrigger>(
 QWidget* DynamicList::GetEventMessageWidget(int32_t val)
 {
     EventMessageRef* msg = new EventMessageRef;
-    msg->SetMainWindow(mMainWindow);
+    msg->Setup(mMainWindow);
 
     msg->SetValue((uint32_t)val);
 
@@ -473,11 +493,21 @@ QWidget* DynamicList::GetEventMessageWidget(int32_t val)
 QWidget* DynamicList::GetObjectSelectorWidget(uint32_t val)
 {
     ObjectSelector* sel = new ObjectSelector;
-    sel->Bind(mMainWindow, mObjectSelectorType);
+    sel->BindSelector(mMainWindow, mObjectSelectorType, mSelectorServerData);
 
     sel->SetValue(val);
 
     return sel;
+}
+
+QWidget* DynamicList::GetSpotWidget(uint32_t val)
+{
+    SpotRef* spot = new SpotRef;
+    spot->SetMainWindow(mMainWindow);
+
+    spot->SetValue(val);
+
+    return spot;
 }
 
 std::list<int32_t> DynamicList::GetIntegerList() const
@@ -525,6 +555,16 @@ std::list<uint32_t> DynamicList::GetUnsignedIntegerList() const
             ObjectSelector* sel = ui->layoutItems->itemAt(childIdx)->widget()
                 ->findChild<ObjectSelector*>();
             result.push_back(sel->GetValue());
+        }
+    }
+    else if(mType == DynamicItemType_t::COMPLEX_SPOT)
+    {
+        int total = ui->layoutItems->count();
+        for(int childIdx = 0; childIdx < total; childIdx++)
+        {
+            SpotRef* ref = ui->layoutItems->itemAt(childIdx)->widget()
+                ->findChild<SpotRef*>();
+            result.push_back(ref->GetValue());
         }
     }
     else
@@ -610,7 +650,8 @@ std::list<std::shared_ptr<objects::EventChoice>>
     DynamicList::GetObjectList() const
 {
     std::list<std::shared_ptr<objects::EventChoice>> result;
-    if(mType != DynamicItemType_t::OBJ_EVENT_CHOICE)
+    if(mType != DynamicItemType_t::OBJ_EVENT_CHOICE &&
+        mType != DynamicItemType_t::OBJ_EVENT_ITIME_CHOICE)
     {
         LOG_ERROR("Attempted to retrieve an EventChoice list from a differing"
             " DynamicList type\n");
@@ -781,11 +822,15 @@ void DynamicList::AddRow()
         ctrl = GetObjectSelectorWidget(0);
         canReorder = true;
         break;
+    case DynamicItemType_t::COMPLEX_SPOT:
+        ctrl = GetSpotWidget(0);
+        break;
     case DynamicItemType_t::OBJ_EVENT_BASE:
         ctrl = GetObjectWidget(std::make_shared<objects::EventBase>());
         canReorder = true;
         break;
     case DynamicItemType_t::OBJ_EVENT_CHOICE:
+    case DynamicItemType_t::OBJ_EVENT_ITIME_CHOICE:
         ctrl = GetObjectWidget(std::make_shared<objects::EventChoice>());
         canReorder = true;
         break;
@@ -851,7 +896,7 @@ void DynamicList::AddItem(QWidget* ctrl, bool canReorder)
 void DynamicList::RemoveRow()
 {
     QObject* senderObj = sender();
-    QObject* parent = senderObj ? senderObj->parent() : 0;
+    QObject* parent = senderObj ? senderObj->parent()->parent() : 0;
     if(parent)
     {
         bool exists = false;
@@ -882,7 +927,7 @@ void DynamicList::RemoveRow()
 void DynamicList::MoveUp()
 {
     QObject* senderObj = sender();
-    QObject* parent = senderObj ? senderObj->parent() : 0;
+    QObject* parent = senderObj ? senderObj->parent()->parent() : 0;
     if(parent)
     {
         bool exists = false;
@@ -913,7 +958,7 @@ void DynamicList::MoveUp()
 void DynamicList::MoveDown()
 {
     QObject* senderObj = sender();
-    QObject* parent = senderObj ? senderObj->parent() : 0;
+    QObject* parent = senderObj ? senderObj->parent()->parent() : 0;
     if(parent)
     {
         bool exists = false;

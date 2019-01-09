@@ -58,6 +58,8 @@ SET(${PROJECT_NAME}_SRCS
     src/ActionZoneChangeUI.cpp
     src/ActionZoneInstanceUI.cpp
     src/BinaryDataNamedSet.cpp
+    src/DropSetList.cpp
+    src/DropSetWindow.cpp
     src/DynamicList.cpp
     src/DynamicListItem.cpp
     src/EventUI.cpp
@@ -93,6 +95,7 @@ SET(${PROJECT_NAME}_SRCS
     src/SpawnLocationUI.cpp
     src/SpawnRestrictionUI.cpp
     src/SpotList.cpp
+    src/SpotRef.cpp
     src/XmlHandler.cpp
     src/ZonePartialSelector.cpp
     src/ZoneTriggerUI.cpp
@@ -129,6 +132,8 @@ SET(${PROJECT_NAME}_HDRS
     src/ActionZoneChangeUI.h
     src/ActionZoneInstanceUI.h
     src/BinaryDataNamedSet.h
+    src/DropSetList.h
+    src/DropSetWindow.h
     src/DynamicList.h
     src/DynamicListItem.h
     src/EventUI.h
@@ -164,6 +169,7 @@ SET(${PROJECT_NAME}_HDRS
     src/SpawnLocationUI.h
     src/SpawnRestrictionUI.h
     src/SpotList.h
+    src/SpotRef.h
     src/XmlHandler.h
     src/ZonePartialSelector.h
     src/ZoneTriggerUI.h
@@ -204,6 +210,8 @@ SET(${PROJECT_NAME}_UIS
     ui/ActionUpdateZoneFlags.ui
     ui/ActionZoneChange.ui
     ui/ActionZoneInstance.ui
+    ui/DropSetProperties.ui
+    ui/DropSetWindow.ui
     ui/DynamicList.ui
     ui/DynamicListItem.ui
     ui/Event.ui
@@ -233,6 +241,7 @@ SET(${PROJECT_NAME}_UIS
     ui/SpawnLocation.ui
     ui/SpawnLocationGroup.ui
     ui/SpawnRestriction.ui
+    ui/SpotRef.ui
     ui/ZonePartialSelector.ui
     ui/ZoneTrigger.ui
     ui/ZoneWindow.ui

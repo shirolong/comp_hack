@@ -28,8 +28,6 @@
 
 // Qt Includes
 #include <PushIgnore.h>
-#include <QLabel>
-
 #include "ui_ZoneWindow.h"
 #include <PopIgnore.h>
 
@@ -48,6 +46,7 @@ class ServerNPC;
 class ServerObject;
 class ServerZone;
 class ServerZonePartial;
+class SpawnLocation;
 
 } // namespace objects
 
@@ -81,8 +80,18 @@ public:
     std::list<std::shared_ptr<objects::Action>> GetLoadedActions(
         bool forUpdate);
 
+    bool ShowSpot(uint32_t spotID);
+
+    void closeEvent(QCloseEvent* event) override;
+
 public slots:
     void LoadZoneFile();
+
+protected:
+    void mouseMoveEvent(QMouseEvent* event);
+    void mousePressEvent(QMouseEvent* event);
+    void mouseReleaseEvent(QMouseEvent* event);
+    bool eventFilter(QObject* o, QEvent* e);
 
 protected slots:
     void LoadPartialDirectory();
@@ -93,14 +102,21 @@ protected slots:
 
     void AddNPC();
     void AddObject();
-    void AddSpawn();
+    void AddSpawn(bool cloneSelected = false);
+    void CloneSpawn();
     void RemoveNPC();
     void RemoveObject();
     void RemoveSpawn();
 
     void ZoneViewUpdated();
     void SelectListObject();
+    void MainTabChanged();
     void SpawnTabChanged();
+
+    void NPCMoved(std::shared_ptr<libcomp::Object> obj,
+        bool up);
+    void ObjectMoved(std::shared_ptr<libcomp::Object> obj,
+        bool up);
 
     void Zoom();
     void ShowToggled(bool checked);
@@ -135,6 +151,8 @@ private:
         bool selected, QPainter& painter);
     void DrawObject(const std::shared_ptr<objects::ServerObject>& obj,
         bool selected, QPainter& painter);
+    void DrawSpawnLocation(const std::shared_ptr<objects::SpawnLocation>& loc,
+        QPainter& painter);
     void DrawSpot(const std::shared_ptr<objects::MiSpotData>& spotDef,
         bool selected, QPainter& painter);
 
@@ -144,10 +162,12 @@ private:
     MainWindow *mMainWindow;
 
     Ui::ZoneWindow ui;
-    QLabel* mDrawTarget;
 
-    float mOffsetX;
-    float mOffsetY;
+    int32_t mOffsetX;
+    int32_t mOffsetY;
+
+    QPoint mLastMousePos;
+    bool mDragging;
 
     libcomp::String mZonePath;
     std::shared_ptr<MergedZone> mMergedZone;

@@ -61,9 +61,14 @@ void SpawnLocationGroupList::SetMainWindow(MainWindow *pMainWindow)
     mMainWindow = pMainWindow;
 
     prop->groups->Setup(DynamicItemType_t::COMPLEX_OBJECT_SELECTOR,
-        pMainWindow, "SpawnGroup");
-    prop->spots->Setup(DynamicItemType_t::PRIMITIVE_UINT, pMainWindow);
+        pMainWindow, "SpawnGroup", true);
+    prop->groups->SetAddText("Add Spawn Group");
+
+    prop->spots->Setup(DynamicItemType_t::COMPLEX_SPOT, pMainWindow);
+    prop->spots->SetAddText("Add Spot");
+
     prop->locations->Setup(DynamicItemType_t::OBJ_SPAWN_LOCATION, pMainWindow);
+    prop->locations->SetAddText("Add Location");
 }
 
 QString SpawnLocationGroupList::GetObjectID(const std::shared_ptr<

@@ -25,8 +25,6 @@
 #ifndef TOOLS_CATHEDRAL_SRC_EVENTWINDOW_H
 #define TOOLS_CATHEDRAL_SRC_EVENTWINDOW_H
 
-#include "EventWindow.h"
-
 // Qt Includes
 #include <PushIgnore.h>
 #include <QWidget>
@@ -69,19 +67,36 @@ public:
 
     void ChangeEventID(const libcomp::String& currentID);
 
+    std::list<libcomp::String> GetCurrentEventIDs() const;
+
+    void closeEvent(QCloseEvent* event) override;
+
 private slots:
     void FileSelectionChanged();
     void LoadDirectory();
     void LoadFile();
+    void ReloadFile();
     void SaveFile();
     void SaveAllFiles();
     void NewFile();
     void NewEvent();
     void RemoveEvent();
+    void Search();
     void Refresh(bool reselectEvent = true);
     void GoTo();
+    void Back();
+    void FileViewChanged();
+    void CollapseAll();
+    void ExpandAll();
     void CurrentEventEdited();
     void TreeSelectionChanged();
+
+    void MoveUp();
+    void MoveDown();
+    void Reorganize();
+    void ChangeCurrentEventID();
+    void ChangeFileEventIDs();
+    void ChangeTreeBranchIDs();
 
 private:
     bool LoadFileFromPath(const libcomp::String& path);
@@ -92,7 +107,7 @@ private:
     std::shared_ptr<objects::Event> GetNewEvent(
         objects::Event::EventType_t type) const;
 
-    void BindSelectedEvent();
+    void BindSelectedEvent(bool storePrevious);
     void BindEventEditControls(QWidget* eNode);
 
     void AddEventToTree(const libcomp::String& id, EventTreeItem* parent,
@@ -105,8 +120,14 @@ private:
         libcomp::String>& idMap, const std::list<std::shared_ptr<
         objects::Action>>& actions);
 
+    libcomp::String GetCommonEventPrefix(
+        const std::shared_ptr<EventFile>& file);
+    libcomp::String GetEventTypePrefix(const libcomp::String& prefix,
+        objects::Event::EventType_t eventType);
     libcomp::String GetNewEventID(const std::shared_ptr<EventFile>& file,
         objects::Event::EventType_t eventType);
+
+    void UpdatePreviousEvents(const libcomp::String& last);
 
     void RebuildLocalIDMap(const std::shared_ptr<EventFile>& file);
     void RebuildGlobalIDMap();
@@ -119,7 +140,10 @@ private:
     std::unordered_map<libcomp::String, std::shared_ptr<EventFile>> mFiles;
     std::unordered_map<libcomp::String, libcomp::String> mGlobalIDMap;
 
+    libcomp::String mCurrentFileName;
     std::shared_ptr<FileEvent> mCurrentEvent;
+
+    std::list<libcomp::String> mPreviousEventIDs;
 
     Ui::EventWindow *ui;
 };

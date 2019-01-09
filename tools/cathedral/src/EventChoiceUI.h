@@ -30,6 +30,7 @@
 
 // Qt Includes
 #include <PushIgnore.h>
+#include <QGroupBox>
 #include <QWidget>
 #include <PopIgnore.h>
 
@@ -45,7 +46,8 @@ class EventChoice : public EventBase
     Q_OBJECT
 
 public:
-    explicit EventChoice(MainWindow *pMainWindow, QWidget *pParent = 0);
+    explicit EventChoice(MainWindow *pMainWindow, bool isITime,
+        QWidget *pParent = 0);
     virtual ~EventChoice();
 
     void Load(const std::shared_ptr<objects::EventChoice>& e);
@@ -53,6 +55,7 @@ public:
 
 protected:
     EventMessageRef *mMessage;
+    QGroupBox *mBranchGroup;
     DynamicList *mBranches;
     ServerScript *mBranchScript;
 };

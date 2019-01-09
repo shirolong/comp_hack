@@ -47,6 +47,8 @@ class ObjectPosition;
 
 } // namespace Ui
 
+class MainWindow;
+
 class ObjectPosition : public QWidget
 {
     Q_OBJECT
@@ -54,6 +56,8 @@ class ObjectPosition : public QWidget
 public:
     explicit ObjectPosition(QWidget *pParent = 0);
     virtual ~ObjectPosition();
+
+    void SetMainWindow(MainWindow *pMainWindow);
 
     void Load(const std::shared_ptr<objects::ObjectPosition>& pos);
     void Load(uint32_t spotID, float x, float y, float rot);
@@ -64,6 +68,8 @@ protected slots:
 
 protected:
     Ui::ObjectPosition *prop;
+
+    MainWindow *mMainWindow;
 };
 
 #endif // TOOLS_CATHEDRAL_SRC_OBJECTPOSITIONUI_H

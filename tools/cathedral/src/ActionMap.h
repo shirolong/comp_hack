@@ -55,7 +55,9 @@ public:
     virtual ~ActionMap();
 
     void BindSelector(MainWindow *pMainWindow,
-        const libcomp::String& objectSelectorType);
+        const libcomp::String& objectSelectorType, bool serverData = false);
+
+    void SetAddText(const libcomp::String& text);
 
     void Load(const std::unordered_map<int32_t, int32_t>& values);
     void Load(const std::unordered_map<uint32_t, int32_t>& values);
@@ -80,6 +82,8 @@ protected:
     int32_t mMin, mMax;
 
     libcomp::String mObjectSelectorType;
+
+    bool mServerData;
 
     Ui::ActionMap *ui;
 

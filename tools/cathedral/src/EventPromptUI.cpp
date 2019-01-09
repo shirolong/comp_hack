@@ -47,16 +47,19 @@ EventPrompt::EventPrompt(MainWindow *pMainWindow, QWidget *pParent)
     prop->setupUi(pWidget);
 
     // Normal next paths do not apply to prompts
+    ui->lblNext->hide();
     ui->next->hide();
+    ui->lblQueueNext->hide();
     ui->queueNext->hide();
-    ui->branches->hide();
+    ui->grpBranches->hide();
 
     ui->eventTitle->setText(tr("<b>Prompt</b>"));
     ui->layoutMain->addWidget(pWidget);
 
     prop->choices->Setup(DynamicItemType_t::OBJ_EVENT_CHOICE, pMainWindow);
+    prop->choices->SetAddText("Add Choice");
 
-    prop->message->SetMainWindow(pMainWindow);
+    prop->message->Setup(pMainWindow);
 }
 
 EventPrompt::~EventPrompt()

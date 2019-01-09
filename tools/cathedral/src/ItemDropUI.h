@@ -61,6 +61,10 @@ public:
     void Load(const std::shared_ptr<objects::ItemDrop>& drop);
     std::shared_ptr<objects::ItemDrop> Save() const;
 
+protected slots:
+    void MinStackChanged();
+    void TypeChanged();
+
 protected:
     Ui::ItemDrop *prop;
 };

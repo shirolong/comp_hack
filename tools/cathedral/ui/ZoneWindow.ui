@@ -66,6 +66,43 @@
              <height>601</height>
             </rect>
            </property>
+           <layout class="QVBoxLayout" name="mapScrollAreaWidgetLayout">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="drawTarget">
+              <property name="text">
+               <string/>
+              </property>
+              <property name="margin">
+               <number>10</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="mapSpacer">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
           </widget>
          </widget>
         </item>
@@ -75,6 +112,13 @@
            <widget class="QLabel" name="lblZoom">
             <property name="text">
              <string>Zoom:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="lblZoomDown">
+            <property name="text">
+             <string>-</string>
             </property>
            </widget>
           </item>
@@ -110,6 +154,13 @@
            </widget>
           </item>
           <item>
+           <widget class="QLabel" name="lblZoomUp">
+            <property name="text">
+             <string>+</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="spacerMapControls">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -121,6 +172,13 @@
              </size>
             </property>
            </spacer>
+          </item>
+          <item>
+           <widget class="QLabel" name="lblCoordinates">
+            <property name="text">
+             <string>-/-</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
@@ -674,22 +732,6 @@
          <item>
           <layout class="QHBoxLayout" name="layoutNPCControls">
            <item>
-            <widget class="QCheckBox" name="showNPCs">
-             <property name="maximumSize">
-              <size>
-               <width>200</width>
-               <height>16777215</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>Show</string>
-             </property>
-             <property name="checked">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item>
             <widget class="QPushButton" name="addNPC">
              <property name="text">
               <string>Add NPC</string>
@@ -737,22 +779,6 @@
          </item>
          <item>
           <layout class="QHBoxLayout" name="layoutObjectControls">
-           <item>
-            <widget class="QCheckBox" name="showObjects">
-             <property name="maximumSize">
-              <size>
-               <width>200</width>
-               <height>16777215</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>Show</string>
-             </property>
-             <property name="checked">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
            <item>
             <widget class="QPushButton" name="addObject">
              <property name="text">
@@ -831,13 +857,17 @@
          </item>
          <item>
           <layout class="QHBoxLayout" name="layoutSpawnControls">
-           <property name="topMargin">
-            <number>5</number>
-           </property>
            <item>
             <widget class="QPushButton" name="addSpawn">
              <property name="text">
               <string>Add Spawn</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="cloneSpawn">
+             <property name="text">
+              <string>Clone</string>
              </property>
             </widget>
            </item>
@@ -901,7 +931,16 @@
     <property name="title">
      <string>View</string>
     </property>
+    <widget class="QMenu" name="menuShowSpots">
+     <property name="title">
+      <string>Show Spots</string>
+     </property>
+    </widget>
     <addaction name="actionRefresh"/>
+    <addaction name="separator"/>
+    <addaction name="actionShowNPCs"/>
+    <addaction name="actionShowObjects"/>
+    <addaction name="menuShowSpots"/>
    </widget>
    <widget class="QMenu" name="menuPartials">
     <property name="title">
@@ -915,83 +954,36 @@
    <addaction name="menuPartials"/>
    <addaction name="menuView"/>
   </widget>
-  <action name="action_Open">
-   <property name="text">
-    <string>&amp;Open</string>
-   </property>
-   <property name="toolTip">
-    <string>Open a zone for viewing.</string>
-   </property>
-  </action>
-  <action name="action_Quit">
-   <property name="text">
-    <string>&amp;Quit</string>
-   </property>
-   <property name="iconText">
-    <string>Quit</string>
-   </property>
-   <property name="toolTip">
-    <string>Close the application.</string>
-   </property>
-  </action>
-  <action name="zoom100">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>100%</string>
-   </property>
-  </action>
-  <action name="zoom50">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>50%</string>
-   </property>
-  </action>
-  <action name="zoom25">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>25%</string>
-   </property>
-  </action>
-  <action name="zoom200">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>200%</string>
-   </property>
-  </action>
   <action name="actionRefresh">
    <property name="text">
     <string>Refresh</string>
+   </property>
+   <property name="shortcut">
+    <string>F5</string>
    </property>
   </action>
   <action name="actionSave">
    <property name="text">
     <string>Save</string>
    </property>
-  </action>
-  <action name="actionRemove_Selected_Locations">
-   <property name="text">
-    <string>Remove Selected Locations</string>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
    </property>
   </action>
   <action name="actionPartialsLoadFile">
    <property name="text">
     <string>Load File</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+P</string>
+   </property>
   </action>
   <action name="actionPartialsLoadDirectory">
    <property name="text">
     <string>Load Directory</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+D</string>
    </property>
   </action>
   <action name="actionPartialsApply">
@@ -1003,10 +995,38 @@
    <property name="text">
     <string>Load</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
   </action>
   <action name="actionSaveAll">
    <property name="text">
     <string>Save All</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+S</string>
+   </property>
+  </action>
+  <action name="actionShowNPCs">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show NPCs</string>
+   </property>
+  </action>
+  <action name="actionShowObjects">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Objects</string>
    </property>
   </action>
  </widget>

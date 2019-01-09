@@ -42,7 +42,7 @@
 #include <climits>
 
 ActionMap::ActionMap(QWidget *pParent) : QWidget(pParent), mMin(INT_MIN),
-    mMax(INT_MAX)
+    mMax(INT_MAX), mServerData(false)
 {
     ui = new Ui::ActionMap;
     ui->setupUi(this);
@@ -56,10 +56,28 @@ ActionMap::~ActionMap()
 }
 
 void ActionMap::BindSelector(MainWindow *pMainWindow,
-    const libcomp::String& objectSelectorType)
+    const libcomp::String& objectSelectorType, bool serverData)
 {
     mMainWindow = pMainWindow;
-    mObjectSelectorType = objectSelectorType;
+
+    if((!mObjectSelectorType.IsEmpty() || !objectSelectorType.IsEmpty()) &&
+        mObjectSelectorType != objectSelectorType)
+    {
+        mObjectSelectorType = objectSelectorType;
+        mServerData = serverData;
+
+        // Rebind selectors for any existing values
+        for(auto pValue : mValues)
+        {
+            pValue->Setup(pValue->GetKey(), pValue->GetValue(),
+                objectSelectorType, mServerData, mMainWindow);
+        }
+    }
+}
+
+void ActionMap::SetAddText(const libcomp::String& text)
+{
+    ui->lblAddText->setText(qs(text));
 }
 
 void ActionMap::Load(const std::unordered_map<int32_t, int32_t>& values)
@@ -70,7 +88,7 @@ void ActionMap::Load(const std::unordered_map<int32_t, int32_t>& values)
     {
         auto item = new ActionMapItem(mValueName, this);
         item->Setup(val.first, val.second, mObjectSelectorType,
-            mMainWindow);
+            mServerData, mMainWindow);
         AddValue(item);
     }
 }
@@ -83,7 +101,7 @@ void ActionMap::Load(const std::unordered_map<uint32_t, int32_t>& values)
     {
         auto item = new ActionMapItem(mValueName, this);
         item->Setup((int32_t)val.first, val.second, mObjectSelectorType,
-            mMainWindow);
+            mServerData, mMainWindow);
         AddValue(item);
     }
 }
@@ -142,7 +160,7 @@ void ActionMap::SetMinMax(int32_t min, int32_t max)
 void ActionMap::AddNewValue()
 {
     auto item = new ActionMapItem(mValueName, this);
-    item->Setup(0, 0, mObjectSelectorType, mMainWindow);
+    item->Setup(0, 0, mObjectSelectorType, mServerData, mMainWindow);
 
     AddValue(item);
 }

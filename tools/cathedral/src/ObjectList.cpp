@@ -25,6 +25,7 @@
 #include "ObjectList.h"
 
 // Cathedral Includes
+#include "MainWindow.h"
 #include "ObjectListModel.h"
 
 // Qt Includes
@@ -38,7 +39,7 @@
 #include <Log.h>
 
 ObjectList::ObjectList(QWidget *pParent) :
-    QWidget(pParent), mReadOnly(false)
+    QWidget(pParent), mMainWindow(nullptr), mReadOnly(false)
 {
     mObjectModel = new ObjectListModel(this);
 
@@ -53,11 +54,19 @@ ObjectList::ObjectList(QWidget *pParent) :
 
     ui->objectList->setModel(mFilterModel);
 
+    ui->moveUp->setHidden(true);
+    ui->moveDown->setHidden(true);
+    ui->moveUp->setDisabled(true);
+    ui->moveDown->setDisabled(true);
+
     connect(ui->objectSearch, SIGNAL(textChanged(const QString&)),
         this, SLOT(Search(const QString&)));
     connect(ui->objectList->selectionModel(), SIGNAL(selectionChanged(
         const QItemSelection&, const QItemSelection&)),
         this, SLOT(SelectedObjectChanged()));
+
+    connect(ui->moveUp, SIGNAL(clicked(bool)), this, SLOT(MoveUp()));
+    connect(ui->moveDown, SIGNAL(clicked(bool)), this, SLOT(MoveDown()));
 }
 
 ObjectList::~ObjectList()
@@ -116,6 +125,7 @@ void ObjectList::SetObjectList(const std::vector<
     mObjectModel->SetObjectList(objs);
 
     // Always reset to no selection
+    mActiveObject.reset();
     LoadProperties(nullptr);
 }
 
@@ -152,9 +162,17 @@ void ObjectList::SelectedObjectChanged()
 {
     auto obj = mActiveObject.lock();
 
-    if(obj && !mReadOnly)
+    if(obj)
     {
-        SaveProperties(obj);
+        if(mMainWindow)
+        {
+            mMainWindow->CloseSelectors(this);
+        }
+
+        if(!mReadOnly)
+        {
+            SaveProperties(obj);
+        }
     }
 
     auto idxList = ui->objectList->selectionModel()->selectedIndexes();
@@ -162,16 +180,45 @@ void ObjectList::SelectedObjectChanged()
     if(idxList.isEmpty())
     {
         mActiveObject = {};
+
+        ui->moveUp->setDisabled(true);
+        ui->moveDown->setDisabled(true);
     }
     else
     {
         mActiveObject = mObjectModel->GetObject(
             mFilterModel->mapToSource(idxList.at(0)));
+
+        ui->moveUp->setDisabled(false);
+        ui->moveDown->setDisabled(false);
     }
 
     LoadProperties(mActiveObject.lock());
 
     emit selectedObjectChanged();
+}
+
+void ObjectList::MoveUp()
+{
+    auto idxList = ui->objectList->selectionModel()->selectedIndexes();
+    if(!idxList.isEmpty() && idxList.at(0).row() != 0)
+    {
+        auto obj = mObjectModel->GetObject(
+            mFilterModel->mapToSource(idxList.at(0)));
+        emit objectMoved(obj, true);
+    }
+}
+
+void ObjectList::MoveDown()
+{
+    auto idxList = ui->objectList->selectionModel()->selectedIndexes();
+    if(!idxList.isEmpty() &&
+        idxList.at(0).row() != mObjectModel->rowCount() - 1)
+    {
+        auto obj = mObjectModel->GetObject(
+            mFilterModel->mapToSource(idxList.at(0)));
+        emit objectMoved(obj, false);
+    }
 }
 
 std::map<uint32_t, QString> ObjectList::GetObjectMapping() const
@@ -194,4 +241,10 @@ std::map<uint32_t, QString> ObjectList::GetObjectMapping() const
 void ObjectList::SetReadOnly(bool readOnly)
 {
     mReadOnly = readOnly;
+}
+
+void ObjectList::ToggleMoveControls(bool visible)
+{
+    ui->moveUp->setHidden(!visible);
+    ui->moveDown->setHidden(!visible);
 }

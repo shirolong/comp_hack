@@ -1,11 +1,10 @@
 /**
- * @file tools/cathedral/src/ObjectSelectorBase.h
+ * @file tools/cathedral/src/DropSetList.h
  * @ingroup cathedral
  *
  * @author HACKfrost
  *
- * @brief Definition for a field bound to an object with a selectable
- *  text representation.
+ * @brief Definition for a control that holds a list of Drop Sets.
  *
  * Copyright (C) 2012-2018 COMP_hack Team <compomega@tutanota.com>
  *
@@ -23,41 +22,41 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef TOOLS_CATHEDRAL_SRC_OBJECTSELECTORBASE_H
-#define TOOLS_CATHEDRAL_SRC_OBJECTSELECTORBASE_H
+#ifndef TOOLS_CATHEDRAL_SRC_DROPSETLIST_H
+#define TOOLS_CATHEDRAL_SRC_DROPSETLIST_H
 
-// Qt Includes
-#include <PushIgnore.h>
-#include <QWidget>
-#include <PopIgnore.h>
+#include "ObjectList.h"
 
 // libcomp Includes
 #include <CString.h>
 
-class MainWindow;
+namespace Ui
+{
 
-class ObjectSelectorBase : public QWidget
+class DropSetProperties;
+
+} // namespace Ui
+
+class DropSetList : public ObjectList
 {
     Q_OBJECT
 
 public:
-    explicit ObjectSelectorBase(QWidget *pParent = 0);
-    virtual ~ObjectSelectorBase();
+    explicit DropSetList(QWidget *pParent = 0);
+    virtual ~DropSetList();
 
-    virtual bool Bind(MainWindow *pMainWindow, const libcomp::String& objType);
+    virtual void SetMainWindow(MainWindow *pMainWindow);
 
-    virtual void SetValue(uint32_t value) = 0;
-    virtual uint32_t GetValue() const = 0;
+    QString GetObjectID(const std::shared_ptr<
+        libcomp::Object>& obj) const override;
+    QString GetObjectName(const std::shared_ptr<
+        libcomp::Object>& obj) const override;
 
-    libcomp::String GetObjectType() const;
-
-protected slots:
-    void GetItem();
+    void LoadProperties(const std::shared_ptr<libcomp::Object>& obj) override;
+    void SaveProperties(const std::shared_ptr<libcomp::Object>& obj) override;
 
 protected:
-    MainWindow *mMainWindow;
-
-    libcomp::String mObjType;
+    Ui::DropSetProperties *prop;
 };
 
-#endif // TOOLS_CATHEDRAL_SRC_OBJECTSELECTORBASE_H
+#endif // TOOLS_CATHEDRAL_SRC_DROPSETLIST_H

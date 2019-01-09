@@ -38,15 +38,19 @@
 #include <QInputDialog>
 #include <QIODevice>
 #include <QMessageBox>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPicture>
 #include <QScrollBar>
 #include <QSettings>
 #include <QShortcut>
 #include <QToolTip>
+
+#include <ui_SpotProperties.h>
 #include <PopIgnore.h>
 
 // object Includes
+#include <MiCTitleData.h>
 #include <MiDevilData.h>
 #include <MiGrowthData.h>
 #include <MiNPCBasicData.h>
@@ -64,6 +68,7 @@
 #include <SpawnGroup.h>
 #include <SpawnLocation.h>
 #include <SpawnLocationGroup.h>
+#include <SpawnRestriction.h>
 #include <ServerZonePartial.h>
 #include <ServerZoneSpot.h>
 #include <ServerZoneTrigger.h>
@@ -80,6 +85,7 @@ const QColor COLOR_SELECTED = Qt::red;
 const QColor COLOR_PLAYER = Qt::magenta;
 const QColor COLOR_NPC = Qt::darkRed;
 const QColor COLOR_OBJECT = Qt::blue;
+const QColor COLOR_SPAWN_LOC = Qt::darkMagenta;
 const QColor COLOR_SPOT = Qt::darkGreen;
 
 // Barrier colors
@@ -89,7 +95,8 @@ const QColor COLOR_TOGGLE1 = Qt::darkYellow;
 const QColor COLOR_TOGGLE2 = Qt::darkCyan;
 
 ZoneWindow::ZoneWindow(MainWindow *pMainWindow, QWidget *p)
-    : QMainWindow(p), mMainWindow(pMainWindow), mDrawTarget(0)
+    : QMainWindow(p), mMainWindow(pMainWindow), mOffsetX(0), mOffsetY(0),
+    mDragging(false)
 {
     ui.setupUi(this);
 
@@ -102,29 +109,41 @@ ZoneWindow::ZoneWindow(MainWindow *pMainWindow, QWidget *p)
     ui.spawnLocationGroups->SetMainWindow(pMainWindow);
     ui.spots->SetMainWindow(pMainWindow);
 
-    ui.zoneID->Bind(pMainWindow, "ZoneData");
+    ui.zoneID->BindSelector(pMainWindow, "ZoneData");
+
     ui.validTeamTypes->Setup(DynamicItemType_t::PRIMITIVE_INT,
         pMainWindow);
-    ui.dropSetIDs->Setup(DynamicItemType_t::PRIMITIVE_UINT,
-        pMainWindow);
+
+    ui.dropSetIDs->Setup(DynamicItemType_t::COMPLEX_OBJECT_SELECTOR,
+        pMainWindow, "DropSet", true);
+    ui.dropSetIDs->SetAddText("Add Drop Set");
+
     ui.skillBlacklist->Setup(DynamicItemType_t::PRIMITIVE_UINT,
         pMainWindow);
+    ui.skillBlacklist->SetAddText("Add Skill");
+
     ui.skillWhitelist->Setup(DynamicItemType_t::PRIMITIVE_UINT,
         pMainWindow);
+    ui.skillWhitelist->SetAddText("Add Skill");
+
     ui.triggers->Setup(DynamicItemType_t::OBJ_ZONE_TRIGGER,
         pMainWindow);
+    ui.triggers->SetAddText("Add Trigger");
 
     ui.partialDynamicMapIDs->Setup(DynamicItemType_t::PRIMITIVE_UINT,
         pMainWindow);
 
     connect(ui.actionRefresh, SIGNAL(triggered()), this, SLOT(Refresh()));
-    connect(ui.showNPCs, SIGNAL(toggled(bool)), this, SLOT(ShowToggled(bool)));
-    connect(ui.showObjects, SIGNAL(toggled(bool)), this,
+
+    connect(ui.actionShowNPCs, SIGNAL(toggled(bool)), this,
+        SLOT(ShowToggled(bool)));
+    connect(ui.actionShowObjects, SIGNAL(toggled(bool)), this,
         SLOT(ShowToggled(bool)));
 
     connect(ui.addNPC, SIGNAL(clicked()), this, SLOT(AddNPC()));
     connect(ui.addObject, SIGNAL(clicked()), this, SLOT(AddObject()));
     connect(ui.addSpawn, SIGNAL(clicked()), this, SLOT(AddSpawn()));
+    connect(ui.cloneSpawn, SIGNAL(clicked()), this, SLOT(CloneSpawn()));
     connect(ui.removeNPC, SIGNAL(clicked()), this, SLOT(RemoveNPC()));
     connect(ui.removeObject, SIGNAL(clicked()), this, SLOT(RemoveObject()));
     connect(ui.removeSpawn, SIGNAL(clicked()), this, SLOT(RemoveSpawn()));
@@ -140,8 +159,8 @@ ZoneWindow::ZoneWindow(MainWindow *pMainWindow, QWidget *p)
     connect(ui.actionPartialsApply, SIGNAL(triggered()),
         this, SLOT(ApplyPartials()));
 
-    connect(ui.tabs, SIGNAL(selectedObjectChanged()), this,
-        SLOT(SelectListObject()));
+    connect(ui.tabs, SIGNAL(currentChanged(int)), this,
+        SLOT(MainTabChanged()));
     connect(ui.npcs, SIGNAL(selectedObjectChanged()), this,
         SLOT(SelectListObject()));
     connect(ui.objects, SIGNAL(selectedObjectChanged()), this,
@@ -155,14 +174,23 @@ ZoneWindow::ZoneWindow(MainWindow *pMainWindow, QWidget *p)
     connect(ui.spots, SIGNAL(selectedObjectChanged()), this,
         SLOT(SelectListObject()));
 
+    connect(ui.npcs, SIGNAL(objectMoved(std::shared_ptr<
+        libcomp::Object>, bool)), this, SLOT(NPCMoved(std::shared_ptr<
+            libcomp::Object>, bool)));
+    connect(ui.objects, SIGNAL(objectMoved(std::shared_ptr<
+        libcomp::Object>, bool)), this, SLOT(ObjectMoved(std::shared_ptr<
+            libcomp::Object>, bool)));
+
     connect(ui.zoneView, SIGNAL(currentIndexChanged(const QString&)), this,
         SLOT(ZoneViewUpdated()));
     connect(ui.tabSpawnTypes, SIGNAL(currentChanged(int)), this,
         SLOT(SpawnTabChanged()));
     connect(ui.zoomSlider, SIGNAL(valueChanged(int)), this, SLOT(Zoom()));
 
-    QShortcut *shortcut = new QShortcut(QKeySequence("F5"), this);
-    connect(shortcut, SIGNAL(activated()), this, SLOT(Refresh()));
+    // Override the standard scroll behavior for the map scroll area
+    ui.mapScrollArea->installEventFilter(this);
+    ui.mapScrollArea->horizontalScrollBar()->installEventFilter(this);
+    ui.mapScrollArea->verticalScrollBar()->installEventFilter(this);
 }
 
 ZoneWindow::~ZoneWindow()
@@ -225,12 +253,75 @@ bool ZoneWindow::ShowZone()
 void ZoneWindow::RebuildNamedDataSet(const libcomp::String& objType)
 {
     std::vector<libcomp::String> names;
-    if(objType == "Spawn")
+    if(objType == "Actor")
+    {
+        auto hnpcDataSet = std::dynamic_pointer_cast<BinaryDataNamedSet>(
+            mMainWindow->GetBinaryDataSet("hNPCData"));
+        auto onpcDataSet = std::dynamic_pointer_cast<BinaryDataNamedSet>(
+            mMainWindow->GetBinaryDataSet("oNPCData"));
+
+        std::map<int32_t, std::shared_ptr<objects::ServerObject>> actorMap;
+        for(auto npc : mMergedZone->Definition->GetNPCs())
+        {
+            if(npc->GetActorID() &&
+                actorMap.find(npc->GetActorID()) == actorMap.end())
+            {
+                actorMap[npc->GetActorID()] = npc;
+            }
+        }
+        
+        for(auto obj : mMergedZone->Definition->GetObjects())
+        {
+            if(obj->GetActorID() &&
+                actorMap.find(obj->GetActorID()) == actorMap.end())
+            {
+                actorMap[obj->GetActorID()] = obj;
+            }
+        }
+
+        std::vector<std::shared_ptr<libcomp::Object>> actors;
+        for(auto& aPair : actorMap)
+        {
+            auto sObj = aPair.second;
+            auto npc = std::dynamic_pointer_cast<objects::ServerNPC>(sObj);
+
+            libcomp::String name;
+            if(npc)
+            {
+                name = hnpcDataSet->GetName(
+                    hnpcDataSet->GetObjectByID(npc->GetID()));
+                name = libcomp::String("%1 [%2:H]")
+                    .Arg(!name.IsEmpty() ? name : "[Unnamed]")
+                    .Arg(npc->GetID());
+            }
+            else
+            {
+                name = onpcDataSet->GetName(
+                    onpcDataSet->GetObjectByID(sObj->GetID()));
+                name = libcomp::String("%1 [%2:O]")
+                    .Arg(!name.IsEmpty() ? name : "[Unnamed]")
+                    .Arg(sObj->GetID());
+            }
+
+            actors.push_back(sObj);
+            names.push_back(name);
+        }
+        
+        auto newData = std::make_shared<BinaryDataNamedSet>(
+            [](const std::shared_ptr<libcomp::Object>& obj)->uint32_t
+            {
+                return (uint32_t)std::dynamic_pointer_cast<
+                    objects::ServerObject>(obj)->GetActorID();
+            });
+        newData->MapRecords(actors, names);
+        mMainWindow->RegisterBinaryDataSet("Actor", newData);
+    }
+    else if(objType == "Spawn")
     {
         auto devilDataSet = std::dynamic_pointer_cast<BinaryDataNamedSet>(
             mMainWindow->GetBinaryDataSet("DevilData"));
-
-        /// @todo: add MiCTitleData
+        auto titleDataSet = std::dynamic_pointer_cast<BinaryDataNamedSet>(
+            mMainWindow->GetBinaryDataSet("CTitleData"));
 
         std::map<uint32_t, std::shared_ptr<objects::Spawn>> sort;
         for(auto& sPair : mMergedZone->Definition->GetSpawns())
@@ -247,6 +338,20 @@ void ZoneWindow::RebuildNamedDataSet(const libcomp::String& objType)
 
             libcomp::String name(devilData
                 ? devilDataSet->GetName(devilData) : "[Unknown]");
+
+            uint32_t titleID = spawn->GetVariantType()
+                ? spawn->GetVariantType() :
+                (devilData ? (uint32_t)devilData->GetBasic()->GetTitle() : 0);
+            if(titleID)
+            {
+                auto title = std::dynamic_pointer_cast<objects::MiCTitleData>(
+                    titleDataSet->GetObjectByID(titleID));
+                if(title)
+                {
+                    name = libcomp::String("%1 %2").Arg(title->GetTitle())
+                        .Arg(name);
+                }
+            }
 
             int8_t lvl = spawn->GetLevel();
             if(lvl == -1 && devilData)
@@ -358,6 +463,12 @@ std::list<std::shared_ptr<objects::Action>>
     ZoneWindow::GetLoadedActions(bool forUpdate)
 {
     std::list<std::shared_ptr<objects::Action>> actions;
+    if(!mMergedZone->Definition)
+    {
+        // Nothing loaded
+        return actions;
+    }
+
     if(forUpdate)
     {
         // Make sure all controls are saved and not bound during the update
@@ -467,16 +578,52 @@ std::list<std::shared_ptr<objects::Action>>
     return actions;
 }
 
+bool ZoneWindow::ShowSpot(uint32_t spotID)
+{
+    // Check if the spot exists and error if it does not
+    uint32_t dynamicMapID = mMergedZone->CurrentZone 
+        ? mMergedZone->CurrentZone->GetDynamicMapID() : 0;
+    auto definitions = mMainWindow->GetDefinitions();
+
+    auto spots = definitions->GetSpotData(dynamicMapID);
+    auto spotIter = spots.find(spotID);
+    if(spotIter == spots.end())
+    {
+        QMessageBox err;
+        err.setText(QString("Spot %1 is not currently loaded.").arg(spotID));
+        err.exec();
+
+        return false;
+    }
+
+    // Select the spots tab and select the object
+    if(ui.tabs->currentIndex() != 4)
+    {
+        ui.tabs->setCurrentIndex(4);
+    }
+
+    ui.spots->Select(spotIter->second);
+
+    return true;
+}
+
+void ZoneWindow::closeEvent(QCloseEvent* event)
+{
+    (void)event;
+
+    mMainWindow->CloseSelectors(this);
+}
+
 void ZoneWindow::LoadZoneFile()
 {
-    QSettings settings;
-
     QString path = QFileDialog::getOpenFileName(this, tr("Open Zone XML"),
-        settings.value("datastore").toString(), tr("Zone XML (*.xml)"));
+        mMainWindow->GetDialogDirectory(), tr("Zone XML (*.xml)"));
     if(path.isEmpty())
     {
         return;
     }
+
+    mMainWindow->SetDialogDirectory(path, true);
 
     tinyxml2::XMLDocument doc;
     if(tinyxml2::XML_NO_ERROR != doc.LoadFile(path.toLocal8Bit().constData()))
@@ -533,20 +680,122 @@ void ZoneWindow::LoadZoneFile()
 
     mMainWindow->UpdateActiveZone(mZonePath);
 
+    // Reset all "show" flags and rebuild the spot filters
+    ui.actionShowNPCs->blockSignals(true);
+    ui.actionShowNPCs->setChecked(true);
+    ui.actionShowNPCs->blockSignals(false);
+
+    ui.actionShowObjects->blockSignals(true);
+    ui.actionShowObjects->setChecked(true);
+    ui.actionShowObjects->blockSignals(false);
+
+    auto definitions = mMainWindow->GetDefinitions();
+
+    std::set<uint8_t> spotTypes = { 0 };
+    for(auto spotDef : definitions->GetSpotData(zone->GetDynamicMapID()))
+    {
+        spotTypes.insert(spotDef.second->GetType());
+    }
+
+    // Duplicate the values from the SpotProperties dropdown
+    QWidget temp;
+    Ui::SpotProperties* prop = new Ui::SpotProperties;
+    prop->setupUi(&temp);
+
+    ui.menuShowSpots->clear();
+    for(uint8_t spotType : spotTypes)
+    {
+        auto act = ui.menuShowSpots->addAction(spotType
+            ? prop->type->itemText((int)spotType) : "All");
+        act->setData(spotType);
+        act->setCheckable(true);
+        act->setChecked(true);
+
+        connect(act, SIGNAL(toggled(bool)), this, SLOT(ShowToggled(bool)));
+    }
+
     ShowZone();
+}
+
+void ZoneWindow::mouseMoveEvent(QMouseEvent* event)
+{
+    if(mDragging)
+    {
+        auto pos = event->pos();
+
+        auto hBar = ui.mapScrollArea->horizontalScrollBar();
+        auto vBar = ui.mapScrollArea->verticalScrollBar();
+
+        hBar->setValue(hBar->value() + mLastMousePos.x() - pos.x());
+        vBar->setValue(vBar->value() + mLastMousePos.y() - pos.y());
+
+        mLastMousePos = pos;
+    }
+}
+
+void ZoneWindow::mousePressEvent(QMouseEvent* event)
+{
+    if(ui.mapScrollArea->underMouse())
+    {
+        if(event->button() == Qt::MouseButton::RightButton)
+        {
+            ui.mapScrollArea->setCursor(Qt::CursorShape::ClosedHandCursor);
+            mDragging = true;
+
+            mLastMousePos = event->pos();
+        }
+
+        int margin = ui.drawTarget->margin();
+        auto drawPos = ui.drawTarget->mapFromGlobal(event->globalPos());
+        float x = (float)(drawPos.x() + mOffsetX - margin) *
+            (float)ui.zoomSlider->value();
+        float y = (float)(-drawPos.y() + mOffsetY + margin) *
+            (float)ui.zoomSlider->value();
+        ui.lblCoordinates->setText(QString("%1/%2").arg(x).arg(y));
+    }
+    else
+    {
+        ui.lblCoordinates->setText("-/-");
+    }
+}
+
+void ZoneWindow::mouseReleaseEvent(QMouseEvent* event)
+{
+    (void)event;
+
+    if(mDragging)
+    {
+        ui.mapScrollArea->setCursor(Qt::CursorShape::ArrowCursor);
+        mDragging = false;
+    }
+}
+
+bool ZoneWindow::eventFilter(QObject* o, QEvent* e)
+{
+    if(e->type() == QEvent::Wheel && (o == ui.mapScrollArea ||
+        o == ui.mapScrollArea->horizontalScrollBar() ||
+        o == ui.mapScrollArea->verticalScrollBar()))
+    {
+        // Override mouse wheel to zoom for scroll area
+        QWheelEvent* we = static_cast<QWheelEvent*>(e);
+        ui.zoomSlider->setValue(ui.zoomSlider->value() + (we->delta() / 20));
+
+        return true;
+    }
+
+    return false;
 }
 
 void ZoneWindow::LoadPartialDirectory()
 {
-    QSettings settings;
-
     QString qPath = QFileDialog::getExistingDirectory(this,
-        tr("Load Zone Partial XML folder"),
-        settings.value("datastore").toString());
+        tr("Load Zone Partial XML folder"), mMainWindow->GetDialogDirectory());
     if(qPath.isEmpty())
     {
         return;
     }
+
+    mMainWindow->SetDialogDirectory(qPath, false);
 
     SaveProperties();
 
@@ -568,15 +817,15 @@ void ZoneWindow::LoadPartialDirectory()
 
 void ZoneWindow::LoadPartialFile()
 {
-    QSettings settings;
-
     QString qPath = QFileDialog::getOpenFileName(this,
-        tr("Load Zone Partial XML"), settings.value("datastore").toString(),
+        tr("Load Zone Partial XML"), mMainWindow->GetDialogDirectory(),
         tr("Zone Partial XML (*.xml)"));
     if(qPath.isEmpty())
     {
         return;
     }
+
+    mMainWindow->SetDialogDirectory(qPath, true);
 
     SaveProperties();
 
@@ -592,16 +841,33 @@ void ZoneWindow::SaveFile()
     // Save off all properties first
     SaveProperties();
 
-    if(mMergedZone && mMergedZone->CurrentPartial)
+    if(mMergedZone)
     {
-        std::set<uint32_t> partialIDs;
-        partialIDs.insert(mMergedZone->CurrentPartial->GetID());
-        SavePartials(partialIDs);
+        if(mMergedZone->CurrentPartial)
+        {
+            std::set<uint32_t> partialIDs;
+            partialIDs.insert(mMergedZone->CurrentPartial->GetID());
+            SavePartials(partialIDs);
+        }
+        else if(mMergedZone->CurrentZone &&
+            mMergedZone->Definition == mMergedZone->CurrentZone)
+        {
+            SaveZone();
+        }
+        else
+        {
+            QMessageBox err;
+            err.setText("Merged zone definitions cannot be saved directly."
+                " Please use 'Save All' instead or select which file you"
+                " want to save in the 'View' dropdown.");
+            err.exec();
+        }
     }
-    else if(mMergedZone && mMergedZone->CurrentZone &&
-        mMergedZone->Definition == mMergedZone->CurrentZone)
+    else
     {
-        SaveZone();
+        QMessageBox err;
+        err.setText("No zone loaded. Nothing will be saved.");
+        err.exec();
     }
 }
 
@@ -664,15 +930,21 @@ void ZoneWindow::AddObject()
     UpdateMergedZone(true);
 }
 
-void ZoneWindow::AddSpawn()
+void ZoneWindow::AddSpawn(bool cloneSelected)
 {
     uint32_t nextID = 1;
+    std::shared_ptr<libcomp::Object> clone;
     switch(ui.tabSpawnTypes->currentIndex())
     {
     case 1:
         while(nextID && mMergedZone->Definition->SpawnGroupsKeyExists(nextID))
         {
             nextID = (uint32_t)(nextID + 1);
+        }
+
+        if(cloneSelected)
+        {
+            clone = ui.spawnGroups->GetActiveObject();
         }
         break;
     case 2:
@@ -681,6 +953,11 @@ void ZoneWindow::AddSpawn()
         {
             nextID = (uint32_t)(nextID + 1);
         }
+
+        if(cloneSelected)
+        {
+            clone = ui.spawnLocationGroups->GetActiveObject();
+        }
         break;
     case 0:
     default:
@@ -688,7 +965,18 @@ void ZoneWindow::AddSpawn()
         {
             nextID = (uint32_t)(nextID + 1);
         }
+
+        if(cloneSelected)
+        {
+            clone = ui.spawns->GetActiveObject();
+        }
         break;
+    }
+    
+    if(cloneSelected && !clone)
+    {
+        // Nothing selected
+        return;
     }
 
     int spawnID = QInputDialog::getInt(this, "Enter an ID", "New ID",
@@ -709,7 +997,28 @@ void ZoneWindow::AddSpawn()
         }
         else
         {
-            auto sg = std::make_shared<objects::SpawnGroup>();
+            std::shared_ptr<objects::SpawnGroup> sg;
+            if(clone)
+            {
+                sg = std::make_shared<objects::SpawnGroup>(
+                    *std::dynamic_pointer_cast<objects::SpawnGroup>(clone));
+
+                sg->ClearSpawnActions();
+                sg->ClearDefeatActions();
+
+                if(sg->GetRestrictions())
+                {
+                    // Restrictions are the only exception to the shallow copy
+                    // to keep so make a copy of that too
+                    sg->SetRestrictions(std::make_shared<
+                        objects::SpawnRestriction>(*sg->GetRestrictions()));
+                }
+            }
+            else
+            {
+                sg = std::make_shared<objects::SpawnGroup>();
+            }
+
             sg->SetID((uint32_t)spawnID);
             if(mMergedZone->CurrentPartial)
             {
@@ -721,6 +1030,10 @@ void ZoneWindow::AddSpawn()
                 mMergedZone->CurrentZone->SetSpawnGroups((uint32_t)spawnID,
                     sg);
             }
+
+            // Update then select new spawn group
+            UpdateMergedZone(true);
+            ui.spawnGroups->Select(sg);
         }
         break;
     case 2:
@@ -732,7 +1045,20 @@ void ZoneWindow::AddSpawn()
         }
         else
         {
-            auto slg = std::make_shared<objects::SpawnLocationGroup>();
+            std::shared_ptr<objects::SpawnLocationGroup> slg;
+            if(clone)
+            {
+                slg = std::make_shared<objects::SpawnLocationGroup>(
+                    *std::dynamic_pointer_cast<objects::SpawnLocationGroup>(
+                        clone));
+
+                slg->ClearLocations();
+            }
+            else
+            {
+                slg = std::make_shared<objects::SpawnLocationGroup>();
+            }
+
             slg->SetID((uint32_t)spawnID);
             if(mMergedZone->CurrentPartial)
             {
@@ -744,6 +1070,10 @@ void ZoneWindow::AddSpawn()
                 mMergedZone->CurrentZone->SetSpawnLocationGroups(
                     (uint32_t)spawnID, slg);
             }
+
+            // Update then select new spawn location group
+            UpdateMergedZone(true);
+            ui.spawnLocationGroups->Select(slg);
         }
         break;
     case 0:
@@ -755,7 +1085,20 @@ void ZoneWindow::AddSpawn()
         }
         else
         {
-            auto spawn = std::make_shared<objects::Spawn>();
+            std::shared_ptr<objects::Spawn> spawn;
+            if(clone)
+            {
+                spawn = std::make_shared<objects::Spawn>(
+                    *std::dynamic_pointer_cast<objects::Spawn>(clone));
+
+                spawn->ClearDrops();
+                spawn->ClearGifts();
+            }
+            else
+            {
+                spawn = std::make_shared<objects::Spawn>();
+            }
+
             spawn->SetID((uint32_t)spawnID);
             if(mMergedZone->CurrentPartial)
             {
@@ -767,6 +1110,10 @@ void ZoneWindow::AddSpawn()
                 mMergedZone->CurrentZone->SetSpawns((uint32_t)spawnID,
                     spawn);
             }
+
+            // Update then select new spawn
+            UpdateMergedZone(true);
+            ui.spawns->Select(spawn);
         }
         break;
     }
@@ -777,10 +1124,11 @@ void ZoneWindow::AddSpawn()
         err.setText(qs(errMsg));
         err.exec();
     }
-    else
-    {
-        UpdateMergedZone(true);
-    }
+}
+
+void ZoneWindow::CloneSpawn()
+{
+    AddSpawn(true);
 }
 
 void ZoneWindow::RemoveNPC()
@@ -939,8 +1287,17 @@ void ZoneWindow::SelectListObject()
     DrawMap();
 }
 
+void ZoneWindow::MainTabChanged()
+{
+    mMainWindow->CloseSelectors(this);
+
+    DrawMap();
+}
+
 void ZoneWindow::SpawnTabChanged()
 {
+    mMainWindow->CloseSelectors(this);
+
     switch(ui.tabSpawnTypes->currentIndex())
     {
     case 1:
@@ -961,6 +1318,78 @@ void ZoneWindow::SpawnTabChanged()
     DrawMap();
 }
 
+void ZoneWindow::NPCMoved(std::shared_ptr<libcomp::Object> obj,
+    bool up)
+{
+    std::list<std::shared_ptr<objects::ServerNPC>> npcList;
+    if(mMergedZone->CurrentPartial)
+    {
+        npcList = mMergedZone->CurrentPartial->GetNPCs();
+    }
+    else if(mMergedZone->Definition == mMergedZone->CurrentZone)
+    {
+        npcList = mMergedZone->Definition->GetNPCs();
+    }
+    else
+    {
+        // Nothing to do
+        return;
+    }
+
+    if(ObjectList::Move(npcList, std::dynamic_pointer_cast<
+        objects::ServerNPC>(obj), up))
+    {
+        if(mMergedZone->CurrentPartial)
+        {
+            mMergedZone->CurrentPartial->SetNPCs(npcList);
+        }
+        else
+        {
+            mMergedZone->Definition->SetNPCs(npcList);
+        }
+
+        BindNPCs();
+        Refresh();
+        ui.npcs->Select(obj);
+    }
+}
+
+void ZoneWindow::ObjectMoved(std::shared_ptr<libcomp::Object> obj,
+    bool up)
+{
+    std::list<std::shared_ptr<objects::ServerObject>> objList;
+    if(mMergedZone->CurrentPartial)
+    {
+        objList = mMergedZone->CurrentPartial->GetObjects();
+    }
+    else if(mMergedZone->Definition == mMergedZone->CurrentZone)
+    {
+        objList = mMergedZone->Definition->GetObjects();
+    }
+    else
+    {
+        // Nothing to do
+        return;
+    }
+
+    if(ObjectList::Move(objList, std::dynamic_pointer_cast<
+        objects::ServerObject>(obj), up))
+    {
+        if(mMergedZone->CurrentPartial)
+        {
+            mMergedZone->CurrentPartial->SetObjects(objList);
+        }
+        else
+        {
+            mMergedZone->Definition->SetObjects(objList);
+        }
+
+        BindObjects();
+        Refresh();
+        ui.objects->Select(obj);
+    }
+}
+
 void ZoneWindow::Zoom()
 {
     DrawMap();
@@ -968,13 +1397,52 @@ void ZoneWindow::Zoom()
 
 void ZoneWindow::ShowToggled(bool checked)
 {
-    (void)checked;
+    QAction *qAct = qobject_cast<QAction*>(sender());
+    if(qAct && qAct->parentWidget() == ui.menuShowSpots)
+    {
+        auto showAll = ui.menuShowSpots->actions()[0];
+        if(qAct == showAll)
+        {
+            // All toggled
+            for(auto act : ui.menuShowSpots->actions())
+            {
+                if(act != qAct)
+                {
+                    act->blockSignals(true);
+                    act->setChecked(checked);
+                    act->blockSignals(false);
+                }
+            }
+        }
+        else
+        {
+            // Specific type toggled, update "All"
+            bool allChecked = true;
+            for(auto act : ui.menuShowSpots->actions())
+            {
+                int type = act->data().toInt();
+                if(type)
+                {
+                    allChecked &= act->isChecked();
+                }
+            }
+
+            if(showAll->isChecked() != allChecked)
+            {
+                showAll->blockSignals(true);
+                showAll->setChecked(allChecked);
+                showAll->blockSignals(false);
+            }
+        }
+    }
 
     DrawMap();
 }
 
 void ZoneWindow::Refresh()
 {
+    SaveProperties();
+
     LoadMapFromZone();
 }
 
@@ -1236,6 +1704,8 @@ void ZoneWindow::RebuildCurrentZoneDisplay()
 
 void ZoneWindow::UpdateMergedZone(bool redraw)
 {
+    mMainWindow->CloseSelectors(this);
+
     // Set control defaults
     ui.lblZoneViewNotes->setText("");
 
@@ -1343,6 +1813,9 @@ void ZoneWindow::UpdateMergedZone(bool redraw)
 
     ui.npcs->SetReadOnly(!canEdit);
     ui.objects->SetReadOnly(!canEdit);
+    ui.npcs->ToggleMoveControls(canEdit);
+    ui.objects->ToggleMoveControls(canEdit);
+
     ui.spawns->SetReadOnly(!canEdit);
     ui.spawnGroups->SetReadOnly(!canEdit);
     ui.spawnLocationGroups->SetReadOnly(!canEdit);
@@ -1351,6 +1824,7 @@ void ZoneWindow::UpdateMergedZone(bool redraw)
     ui.addNPC->setDisabled(!canEdit);
     ui.addObject->setDisabled(!canEdit);
     ui.addSpawn->setDisabled(!canEdit);
+    ui.cloneSpawn->setDisabled(!canEdit);
     ui.removeNPC->setDisabled(!canEdit);
     ui.removeObject->setDisabled(!canEdit);
     ui.removeSpawn->setDisabled(!canEdit);
@@ -1388,6 +1862,8 @@ void ZoneWindow::UpdateMergedZone(bool redraw)
 
 bool ZoneWindow::LoadMapFromZone()
 {
+    mMainWindow->CloseSelectors(this);
+
     auto zone = mMergedZone->Definition;
 
     auto dataset = mMainWindow->GetBinaryDataSet("ZoneData");
@@ -1408,6 +1884,9 @@ bool ZoneWindow::LoadMapFromZone()
 
     BindNPCs();
     BindObjects();
+
+    RebuildNamedDataSet("Actor");
+
     BindSpawns();
     BindSpots();
 
@@ -1689,7 +2168,7 @@ void ZoneWindow::DrawMap()
     auto xScroll = ui.mapScrollArea->horizontalScrollBar()->value();
     auto yScroll = ui.mapScrollArea->verticalScrollBar()->value();
 
-    mDrawTarget = new QLabel();
+    ui.drawTarget->clear();
 
     QPicture pic;
     QPainter painter(&pic);
@@ -1776,16 +2255,28 @@ void ZoneWindow::DrawMap()
                             highlight.insert(spotIter->second);
                         }
                     }
+
+                    for(auto loc : slg->GetLocations())
+                    {
+                        highlight.insert(loc);
+                    }
                 }
             }
         }
         break;
     case 4: // Spots
         {
-            auto spot = ui.spots->GetActiveObject();
+            auto spot = std::dynamic_pointer_cast<
+                objects::MiSpotData>(ui.spots->GetActiveObject());
             if(spot)
             {
                 highlight.insert(spot);
+
+                auto serverSpot = zone->GetSpots(spot->GetID());
+                if(serverSpot && serverSpot->GetSpawnArea())
+                {
+                    highlight.insert(serverSpot->GetSpawnArea());
+                }
             }
         }
         break;
@@ -1794,16 +2285,28 @@ void ZoneWindow::DrawMap()
         break;
     }
 
-    // Draw spots
     QFont font = painter.font();
     font.setPixelSize(10);
     painter.setFont(font);
 
+    // Draw spots
+    std::set<uint8_t> showSpotTypes;
+    for(auto act : ui.menuShowSpots->actions())
+    {
+        int type = act->data().toInt();
+        if(type && act->isChecked())
+        {
+            showSpotTypes.insert((uint8_t)type);
+        }
+    }
+
     for(auto spotPair : spots)
     {
-        if(highlight.find(spotPair.second) == highlight.end())
+        auto spotDef = spotPair.second;
+        if(highlight.find(spotDef) == highlight.end() &&
+            showSpotTypes.find(spotDef->GetType()) != showSpotTypes.end())
         {
-            DrawSpot(spotPair.second, false, painter);
+            DrawSpot(spotDef, false, painter);
         }
     }
 
@@ -1815,7 +2318,7 @@ void ZoneWindow::DrawMap()
         Scale(-mMergedZone->CurrentZone->GetStartingY())), 3, 3);
 
     // Draw NPCs
-    if(ui.showNPCs->isChecked())
+    if(ui.actionShowNPCs->isChecked())
     {
         for(auto npc : zone->GetNPCs())
         {
@@ -1827,7 +2330,7 @@ void ZoneWindow::DrawMap()
     }
 
     // Draw Objects
-    if(ui.showObjects->isChecked())
+    if(ui.actionShowObjects->isChecked())
     {
         for(auto obj : zone->GetObjects())
         {
@@ -1844,6 +2347,7 @@ void ZoneWindow::DrawMap()
         auto npc = std::dynamic_pointer_cast<objects::ServerNPC>(h);
         auto obj = std::dynamic_pointer_cast<objects::ServerObject>(h);
         auto spot = std::dynamic_pointer_cast<objects::MiSpotData>(h);
+        auto loc = std::dynamic_pointer_cast<objects::SpawnLocation>(h);
         if(npc)
         {
             DrawNPC(npc, true, painter);
@@ -1856,12 +2360,19 @@ void ZoneWindow::DrawMap()
         {
             DrawSpot(spot, true, painter);
         }
+        else if(loc)
+        {
+            DrawSpawnLocation(loc, painter);
+        }
     }
 
     painter.end();
 
-    mDrawTarget->setPicture(pic);
-    ui.mapScrollArea->setWidget(mDrawTarget);
+    auto bounds = pic.boundingRect();
+    mOffsetX = bounds.topLeft().x();
+    mOffsetY = -bounds.topLeft().y();
+
+    ui.drawTarget->setPicture(pic);
 
     ui.mapScrollArea->horizontalScrollBar()->setValue(xScroll);
     ui.mapScrollArea->verticalScrollBar()->setValue(yScroll);
@@ -1889,7 +2400,7 @@ void ZoneWindow::DrawNPC(const std::shared_ptr<objects::ServerNPC>& npc,
 
     painter.drawEllipse(QPoint(Scale(x), Scale(-y)), 3, 3);
 
-    painter.drawText(QPoint(Scale(x + 20.f), Scale(-y)),
+    painter.drawText(QPoint(Scale(x) + 5, Scale(-y)),
         libcomp::String("%1").Arg(npc->GetID()).C());
 }
 
@@ -1915,8 +2426,37 @@ void ZoneWindow::DrawObject(const std::shared_ptr<objects::ServerObject>& obj,
 
     painter.drawEllipse(QPoint(Scale(x), Scale(-y)), 3, 3);
 
-    painter.drawText(QPoint(Scale(x + 20.f), Scale(-y)),
+    painter.drawText(QPoint(Scale(x) + 5, Scale(-y)),
         libcomp::String("%1").Arg(obj->GetID()).C());
+}
+
+void ZoneWindow::DrawSpawnLocation(const std::shared_ptr<
+    objects::SpawnLocation>& loc, QPainter& painter)
+{
+    float x1 = loc->GetX();
+    float y1 = -loc->GetY();
+
+    float x2 = x1 + loc->GetWidth();
+    float y2 = y1 + loc->GetHeight();
+
+    std::vector<std::pair<float, float>> points;
+    points.push_back(std::pair<float, float>(x1, y1));
+    points.push_back(std::pair<float, float>(x2, y1));
+    points.push_back(std::pair<float, float>(x2, y2));
+    points.push_back(std::pair<float, float>(x1, y2));
+
+    // Spawn locs only show when selected so no second color here
+    painter.setPen(QPen(COLOR_SPAWN_LOC));
+    painter.setBrush(QBrush(COLOR_SPAWN_LOC));
+
+    painter.drawLine(Scale(points[0].first), Scale(points[0].second),
+        Scale(points[1].first), Scale(points[1].second));
+    painter.drawLine(Scale(points[1].first), Scale(points[1].second),
+        Scale(points[2].first), Scale(points[2].second));
+    painter.drawLine(Scale(points[2].first), Scale(points[2].second),
+        Scale(points[3].first), Scale(points[3].second));
+    painter.drawLine(Scale(points[3].first), Scale(points[3].second),
+        Scale(points[0].first), Scale(points[0].second));
 }
 
 void ZoneWindow::DrawSpot(const std::shared_ptr<objects::MiSpotData>& spotDef,
@@ -1968,9 +2508,9 @@ void ZoneWindow::DrawSpot(const std::shared_ptr<objects::MiSpotData>& spotDef,
     painter.drawLine(Scale(points[3].first), Scale(points[3].second),
         Scale(points[0].first), Scale(points[0].second));
 
-    painter.drawText(QPoint(Scale(x1), Scale(y2)),
-        libcomp::String("[%1] %2").Arg(spotDef->GetType())
-        .Arg(spotDef->GetID()).C());
+    painter.drawText(QPoint(Scale(points[3].first),
+        Scale(points[3].second) + 10), libcomp::String("[%1] %2")
+        .Arg(spotDef->GetType()).Arg(spotDef->GetID()).C());
 }
 
 int32_t ZoneWindow::Scale(int32_t point)

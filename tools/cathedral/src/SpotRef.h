@@ -1,11 +1,10 @@
 /**
- * @file tools/cathedral/src/ObjectSelectorBase.h
+ * @file tools/cathedral/src/SpotRef.h
  * @ingroup cathedral
  *
  * @author HACKfrost
  *
- * @brief Definition for a field bound to an object with a selectable
- *  text representation.
+ * @brief Definition for a zone spot being referenced.
  *
  * Copyright (C) 2012-2018 COMP_hack Team <compomega@tutanota.com>
  *
@@ -23,8 +22,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef TOOLS_CATHEDRAL_SRC_OBJECTSELECTORBASE_H
-#define TOOLS_CATHEDRAL_SRC_OBJECTSELECTORBASE_H
+#ifndef TOOLS_CATHEDRAL_SRC_SPOTREF_H
+#define TOOLS_CATHEDRAL_SRC_SPOTREF_H
 
 // Qt Includes
 #include <PushIgnore.h>
@@ -34,30 +33,35 @@
 // libcomp Includes
 #include <CString.h>
 
+namespace Ui
+{
+
+class SpotRef;
+
+} // namespace Ui
+
 class MainWindow;
 
-class ObjectSelectorBase : public QWidget
+class SpotRef : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit ObjectSelectorBase(QWidget *pParent = 0);
-    virtual ~ObjectSelectorBase();
+    explicit SpotRef(QWidget *pParent = 0);
+    virtual ~SpotRef();
 
-    virtual bool Bind(MainWindow *pMainWindow, const libcomp::String& objType);
+    void SetMainWindow(MainWindow *pMainWindow);
 
-    virtual void SetValue(uint32_t value) = 0;
-    virtual uint32_t GetValue() const = 0;
+    void SetValue(uint32_t spotID);
+    uint32_t GetValue() const;
 
-    libcomp::String GetObjectType() const;
-
-protected slots:
-    void GetItem();
+public slots:
+    void Show();
 
 protected:
-    MainWindow *mMainWindow;
+    Ui::SpotRef *ui;
 
-    libcomp::String mObjType;
+    MainWindow *mMainWindow;
 };
 
-#endif // TOOLS_CATHEDRAL_SRC_OBJECTSELECTORBASE_H
+#endif // TOOLS_CATHEDRAL_SRC_SPOTREF_H

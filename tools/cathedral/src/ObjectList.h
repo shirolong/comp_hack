@@ -75,12 +75,64 @@ public:
 
     void SetReadOnly(bool readOnly);
 
+    void ToggleMoveControls(bool visible);
+
+    template<class T>
+    static bool Move(std::list<std::shared_ptr<T>>& list,
+        std::shared_ptr<T> obj, bool up)
+    {
+        auto iter = list.begin();
+        auto iter2 = list.end();
+        if(!up)
+        {
+            iter2 = list.begin();
+            iter2++;
+        }
+
+        while(iter != list.end() && (up || iter2 != list.end()))
+        {
+            if(*iter == obj)
+            {
+                if(up)
+                {
+                    // Make sure its not already at the top
+                    if(iter2 != list.end())
+                    {
+                        list.splice(iter2, list, iter);
+                    }
+                }
+                else
+                {
+                    list.splice(iter, list, iter2);
+                }
+                return true;
+            }
+
+            iter++;
+
+            if(up && iter2 == list.end())
+            {
+                iter2 = list.begin();
+            }
+            else
+            {
+                iter2++;
+            }
+        }
+
+        return false;
+    }
+
 signals:
     void selectedObjectChanged();
+    void objectMoved(std::shared_ptr<libcomp::Object> obj,
+        bool up);
 
 public slots:
     virtual void Search(const QString& term);
     virtual void SelectedObjectChanged();
+    void MoveUp();
+    void MoveDown();
 
 protected:
     MainWindow *mMainWindow;

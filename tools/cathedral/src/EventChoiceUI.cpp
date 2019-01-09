@@ -39,25 +39,41 @@
 #include <Log.h>
 #include <PacketCodes.h>
 
-EventChoice::EventChoice(MainWindow *pMainWindow, QWidget *pParent) :
-    EventBase(pMainWindow, pParent), mMessage(0), mBranches(0),
-    mBranchScript(0)
+EventChoice::EventChoice(MainWindow *pMainWindow, bool isITime,
+    QWidget *pParent) : EventBase(pMainWindow, pParent), mMessage(0),
+    mBranches(0), mBranchScript(0)
 {
     mMessage = new EventMessageRef;
+    mBranchGroup = new QGroupBox;
     mBranches = new DynamicList;
     mBranchScript = new ServerScript;
 
-    mMessage->SetMainWindow(pMainWindow);
+    mMessage->Setup(pMainWindow, isITime
+        ? "CHouraiMessageData" : "CEventMessageData");
 
     mBranches->Setup(DynamicItemType_t::OBJ_EVENT_BASE, pMainWindow);
+    mBranches->SetAddText("Add Branch");
 
     ui->formCore->insertRow(0, "Message:", mMessage);
-    ui->formBranch->addRow("Branches:", mBranches);
-    ui->formBase->insertRow(1, "Branch Script:", mBranchScript);
+
+    QVBoxLayout* branchGroupLayout = new QVBoxLayout;
+
+    branchGroupLayout->addWidget(mBranchScript);
+    branchGroupLayout->addWidget(mBranches);
+
+    mBranchGroup->setLayout(branchGroupLayout);
+
+    mBranchGroup->setTitle("Branches");
+
+    ui->layoutBranch->addWidget(mBranchGroup);
 }
 
 EventChoice::~EventChoice()
 {
+    mMessage->deleteLater();
+    mBranchGroup->deleteLater();
+    mBranches->deleteLater();
+    mBranchScript->deleteLater();
 }
 
 void EventChoice::Load(const std::shared_ptr<objects::EventChoice>& e)

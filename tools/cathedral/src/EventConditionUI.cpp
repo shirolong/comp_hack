@@ -682,6 +682,7 @@ void EventCondition::RefreshTypeContext()
         ui->lblValue1->setText("Actor ID:");
         ui->lblValue2->setText("State:");
         defaultCompareTxt = "Equal";
+        selectorObjectType = "Actor";
         minValues[1] = 0;
         maxValues[1] = 255;
         cmpBetween = cmpExists = false;
@@ -736,6 +737,7 @@ void EventCondition::RefreshTypeContext()
         ui->lblValue1->setText("Plugin ID:");
         ui->lblValue2->setText("Obtained?:");
         defaultCompareTxt = "Equal";
+        selectorObjectType = "CKeyItemData";
         minValues[0] = minValues[1] = 0;
         maxValues[1] = 1;
         cmpNumeric = cmpBetween = cmpExists = false;
@@ -818,7 +820,7 @@ void EventCondition::RefreshTypeContext()
         ui->lblValue1->setText("Status Effect:");
         ui->lblValue2->setText("Parter Demon?:");
         defaultCompareTxt = "Exists";
-        //selectorObjectType = "CStatusData";
+        selectorObjectType = "StatusData";
         minValues[0] = minValues[1] = 0;
         maxValues[1] = 1;
         cmpNumeric = cmpBetween = cmpEqual = false;
@@ -873,6 +875,7 @@ void EventCondition::RefreshTypeContext()
         ui->lblValue1->setText("Valuable ID:");
         ui->lblValue2->setText("Obtained?:");
         defaultCompareTxt = "Equal";
+        selectorObjectType = "CValuablesData";
         minValues[0] = minValues[1] = 0;
         maxValues[1] = 1;
         cmpNumeric = cmpBetween = cmpExists = false;
@@ -993,7 +996,8 @@ void EventCondition::RefreshTypeContext()
         ui->value1Number->hide();
         ui->value1Selector->show();
 
-        if(ui->value1Selector->Bind(mMainWindow, selectorObjectType))
+        if(ui->value1Selector->BindSelector(mMainWindow, selectorObjectType,
+            false))
         {
             // If the binding changed, reset the value
             ui->value1Selector->SetValue(0);

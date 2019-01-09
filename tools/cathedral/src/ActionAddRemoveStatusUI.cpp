@@ -47,12 +47,14 @@ ActionAddRemoveStatus::ActionAddRemoveStatus(ActionList *pList,
     prop = new Ui::ActionAddRemoveStatus;
     prop->setupUi(pWidget);
 
-    /// @todo: prop->statusStacks->BindSelector(pMainWindow, "CStatusData");
+    prop->statusStacks->BindSelector(pMainWindow, "StatusData");
     prop->statusStacks->SetValueName(tr("Stacks:"));
     prop->statusStacks->SetMinMax(0, 255);
+    prop->statusStacks->SetAddText("Add Status Effect");
 
-    /// @todo: prop->statusTimes->BindSelector(pMainWindow, "CStatusData");
+    prop->statusTimes->BindSelector(pMainWindow, "StatusData");
     prop->statusTimes->SetValueName(tr("Time:"));
+    prop->statusTimes->SetAddText("Add Status Effect");
 
     ui->actionTitle->setText(tr("<b>Add/Remove Status</b>"));
     ui->layoutMain->addWidget(pWidget);

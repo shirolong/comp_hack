@@ -26,6 +26,13 @@
       <widget class="QWidget" name="layoutWidget">
        <layout class="QVBoxLayout" name="layoutTree">
         <item>
+         <widget class="QLineEdit" name="treeSearch">
+          <property name="placeholderText">
+           <string>Enter your search here...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QTreeWidget" name="treeWidget">
           <property name="alternatingRowColors">
            <bool>true</bool>
@@ -57,6 +64,12 @@
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
+          </property>
+          <property name="editable">
+           <bool>true</bool>
+          </property>
+          <property name="insertPolicy">
+           <enum>QComboBox::NoInsert</enum>
           </property>
          </widget>
         </item>
@@ -128,6 +141,13 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="eventBack">
+            <property name="text">
+             <string>Back</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="spacerControls">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -173,6 +193,7 @@
     <addaction name="actionLoadDirectory"/>
     <addaction name="actionSave"/>
     <addaction name="actionSaveAll"/>
+    <addaction name="actionReloadFile"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -180,58 +201,163 @@
     </property>
     <addaction name="actionRefresh"/>
     <addaction name="actionGoto"/>
+    <addaction name="actionFileView"/>
+    <addaction name="separator"/>
+    <addaction name="actionCollapseAll"/>
+    <addaction name="actionExpandAll"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>Edit</string>
+    </property>
+    <widget class="QMenu" name="menuChangeIDs">
+     <property name="title">
+      <string>Change IDs</string>
+     </property>
+     <addaction name="actionChangeID"/>
+     <addaction name="actionChangeFileIDs"/>
+     <addaction name="actionChangeTreeIDs"/>
+    </widget>
+    <addaction name="actionMoveUp"/>
+    <addaction name="actionMoveDown"/>
+    <addaction name="actionReorganize"/>
+    <addaction name="menuChangeIDs"/>
    </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
    <addaction name="menuView"/>
   </widget>
   <action name="actionLoadFile">
    <property name="text">
     <string>Load File</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
   </action>
   <action name="actionLoadDirectory">
    <property name="text">
     <string>Load Directory</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+D</string>
    </property>
   </action>
   <action name="actionSave">
    <property name="text">
     <string>Save</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
   </action>
   <action name="actionNew">
    <property name="text">
     <string>New</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
    </property>
   </action>
   <action name="actionRefresh">
    <property name="text">
     <string>Refresh</string>
    </property>
-  </action>
-  <action name="actionSub">
-   <property name="text">
-    <string>Sub</string>
-   </property>
-  </action>
-  <action name="actionTest">
-   <property name="text">
-    <string>test</string>
-   </property>
-  </action>
-  <action name="actionRemoveCurrent">
-   <property name="text">
-    <string>Remove Current</string>
+   <property name="shortcut">
+    <string>F5</string>
    </property>
   </action>
   <action name="actionGoto">
    <property name="text">
     <string>Go To Event</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+F</string>
+   </property>
   </action>
   <action name="actionSaveAll">
    <property name="text">
     <string>Save All</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+S</string>
+   </property>
+  </action>
+  <action name="actionExpandAll">
+   <property name="text">
+    <string>Expand All Nodes</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl++</string>
+   </property>
+  </action>
+  <action name="actionCollapseAll">
+   <property name="text">
+    <string>Collapse All Nodes</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+-</string>
+   </property>
+  </action>
+  <action name="actionFileView">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Display File Order</string>
+   </property>
+  </action>
+  <action name="actionMoveUp">
+   <property name="text">
+    <string>Move Up</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Up</string>
+   </property>
+  </action>
+  <action name="actionMoveDown">
+   <property name="text">
+    <string>Move Down</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Down</string>
+   </property>
+  </action>
+  <action name="actionReorganize">
+   <property name="text">
+    <string>Reorganize</string>
+   </property>
+  </action>
+  <action name="actionChangeTreeIDs">
+   <property name="text">
+    <string>Tree Branch</string>
+   </property>
+   <property name="toolTip">
+    <string>Changes all event IDs in the selected branch in the tree and below based on a user supplied prefix.</string>
+   </property>
+  </action>
+  <action name="actionChangeID">
+   <property name="text">
+    <string>Selected Event</string>
+   </property>
+   <property name="toolTip">
+    <string>Change the ID of the currently selected event.</string>
+   </property>
+  </action>
+  <action name="actionChangeFileIDs">
+   <property name="text">
+    <string>Entire File</string>
+   </property>
+   <property name="toolTip">
+    <string>Changes all event IDs in the current file based on a user supplied prefix followed by the event type.</string>
+   </property>
+  </action>
+  <action name="actionReloadFile">
+   <property name="text">
+    <string>Reload Selected File</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+R</string>
    </property>
   </action>
  </widget>

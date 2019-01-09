@@ -52,7 +52,8 @@ ActionZoneChange::ActionZoneChange(ActionList *pList, MainWindow *pMainWindow,
     ui->actionTitle->setText(tr("<b>Zone Change</b>"));
     ui->layoutMain->addWidget(pWidget);
 
-    prop->zone->Bind(pMainWindow, "ZoneData");
+    prop->zone->BindSelector(pMainWindow, "ZoneData");
+    prop->destination->SetMainWindow(pMainWindow);
 }
 
 ActionZoneChange::~ActionZoneChange()

@@ -50,6 +50,7 @@ SpawnGroupList::SpawnGroupList(QWidget *pParent) : ObjectList(pParent)
 
     prop->spawns->SetValueName(tr("Count:"));
     prop->spawns->SetMinMax(0, 65535);
+    prop->spawns->SetAddText("Add Spawn");
 
     ui->splitter->addWidget(pWidget);
 }
@@ -63,7 +64,7 @@ void SpawnGroupList::SetMainWindow(MainWindow *pMainWindow)
 {
     mMainWindow = pMainWindow;
 
-    prop->spawns->BindSelector(pMainWindow, "Spawn");
+    prop->spawns->BindSelector(pMainWindow, "Spawn", true);
     prop->spawnActions->SetMainWindow(pMainWindow);
     prop->defeatActions->SetMainWindow(pMainWindow);
 }

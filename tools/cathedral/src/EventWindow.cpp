@@ -26,11 +26,14 @@
 
 // Cathedral Includes
 #include "ActionDelay.h"
+#include "ActionDisplayMessage.h"
 #include "ActionList.h"
 #include "ActionMap.h"
 #include "ActionSpawn.h"
+#include "ActionStageEffect.h"
 #include "ActionStartEvent.h"
 #include "ActionZoneInstance.h"
+#include "BinaryDataNamedSet.h"
 #include "DynamicList.h"
 #include "EventUI.h"
 #include "EventDirectionUI.h"
@@ -95,6 +98,8 @@ public:
 
     libcomp::String EventID;
     int32_t FileIdx;
+    bool FirstFileRef = false;
+    bool ExtensionNode = false;
 };
 
 class FileEvent
@@ -127,6 +132,7 @@ public:
     std::list<std::shared_ptr<FileEvent>> Events;
     std::unordered_map<libcomp::String, int32_t> EventIDMap;
     std::set<libcomp::String> PendingRemovals;
+    bool Reordered = false;
 };
 
 EventWindow::EventWindow(MainWindow *pMainWindow, QWidget *pParent) :
@@ -192,6 +198,13 @@ EventWindow::EventWindow(MainWindow *pMainWindow, QWidget *pParent) :
     ui->addEvent->setMenu(pMenu);
 
     ui->removeEvent->hide();
+    ui->actionMoveUp->setDisabled(true);
+    ui->actionMoveDown->setDisabled(true);
+
+    ui->eventBack->hide();
+
+    connect(ui->treeSearch, SIGNAL(textChanged(const QString&)), this,
+        SLOT(Search()));
 
     connect(ui->actionLoadFile, SIGNAL(triggered()), this, SLOT(LoadFile()));
     connect(ui->actionLoadDirectory, SIGNAL(triggered()), this,
@@ -199,17 +212,35 @@ EventWindow::EventWindow(MainWindow *pMainWindow, QWidget *pParent) :
     connect(ui->actionSave, SIGNAL(triggered()), this, SLOT(SaveFile()));
     connect(ui->actionSaveAll, SIGNAL(triggered()), this,
         SLOT(SaveAllFiles()));
+    connect(ui->actionReloadFile, SIGNAL(triggered()), this,
+        SLOT(ReloadFile()));
     connect(ui->actionNew, SIGNAL(triggered()), this, SLOT(NewFile()));
-    connect(ui->actionRefresh, SIGNAL(triggered()), this, SLOT(Refresh()));
-    connect(ui->actionGoto, SIGNAL(triggered()), this, SLOT(GoTo()));
+    connect(ui->eventBack, SIGNAL(clicked()), this, SLOT(Back()));
     connect(ui->removeEvent, SIGNAL(clicked()), this, SLOT(RemoveEvent()));
     connect(ui->files, SIGNAL(currentIndexChanged(const QString&)), this,
         SLOT(FileSelectionChanged()));
     connect(ui->treeWidget, SIGNAL(itemSelectionChanged()), this,
         SLOT(TreeSelectionChanged()));
 
-    QShortcut *shortcut = new QShortcut(QKeySequence("F5"), this);
-    connect(shortcut, SIGNAL(activated()), this, SLOT(Refresh()));
+    connect(ui->actionRefresh, SIGNAL(triggered()), this, SLOT(Refresh()));
+    connect(ui->actionGoto, SIGNAL(triggered()), this, SLOT(GoTo()));
+    connect(ui->actionFileView, SIGNAL(toggled(bool)), this,
+        SLOT(FileViewChanged()));
+    connect(ui->actionCollapseAll, SIGNAL(triggered()), this,
+        SLOT(CollapseAll()));
+    connect(ui->actionExpandAll, SIGNAL(triggered()), this,
+        SLOT(ExpandAll()));
+
+    connect(ui->actionMoveUp, SIGNAL(triggered()), this, SLOT(MoveUp()));
+    connect(ui->actionMoveDown, SIGNAL(triggered()), this, SLOT(MoveDown()));
+    connect(ui->actionReorganize, SIGNAL(triggered()), this,
+        SLOT(Reorganize()));
+    connect(ui->actionChangeID, SIGNAL(triggered()), this,
+        SLOT(ChangeCurrentEventID()));
+    connect(ui->actionChangeFileIDs, SIGNAL(triggered()), this,
+        SLOT(ChangeFileEventIDs()));
+    connect(ui->actionChangeTreeIDs, SIGNAL(triggered()), this,
+        SLOT(ChangeTreeBranchIDs()));
 }
 
 EventWindow::~EventWindow()
@@ -230,13 +261,14 @@ bool EventWindow::GoToEvent(const libcomp::String& eventID)
         return false;
     }
 
-    libcomp::String currentPath = cs(ui->files->currentText());
+    libcomp::String currentPath = mCurrentFileName;
     libcomp::String path = iter->second;
 
     if(currentPath != path)
     {
         // Switch current file
         ui->files->setCurrentText(qs(path));
+        Refresh(false);
     }
 
     auto file = mFiles[path];
@@ -251,12 +283,22 @@ bool EventWindow::GoToEvent(const libcomp::String& eventID)
             if(treeItem->EventID == eventID)
             {
                 // Block signals and clear current selection
-                ui->treeWidget->blockSignals(true);
+                bool old = ui->treeWidget->blockSignals(true);
                 ui->treeWidget->clearSelection();
-                ui->treeWidget->blockSignals(false);
+                ui->treeWidget->blockSignals(old);
 
                 // Select new item and display (if not already)
                 ui->treeWidget->setItemSelected(treeItem, true);
+
+                // Expand everything above the node then scroll to it
+                auto parent = treeItem->parent();
+                while(parent && !parent->isExpanded())
+                {
+                    ui->treeWidget->expandItem(parent);
+                    parent = parent->parent();
+                }
+
+                ui->treeWidget->scrollToItem(item);
                 show();
                 raise();
                 return true;
@@ -340,6 +382,7 @@ void EventWindow::ChangeEventID(const libcomp::String& currentID)
         fEvent->HasUpdates = true;
         RebuildLocalIDMap(file);
         RebuildGlobalIDMap();
+        EventRef::RefreshAllEventIDs(mMainWindow);
         Refresh(false);
         GoToEvent(eventID);
     }
@@ -352,8 +395,41 @@ void EventWindow::ChangeEventID(const libcomp::String& currentID)
     }
 }
 
+std::list<libcomp::String> EventWindow::GetCurrentEventIDs() const
+{
+    std::list<libcomp::String> eventIDs;
+
+    auto fIter = mFiles.find(mCurrentFileName);
+    if(fIter != mFiles.end())
+    {
+        for(auto e : fIter->second->Events)
+        {
+            eventIDs.push_back(e->Event->GetID());
+        }
+    }
+
+    return eventIDs;
+}
+
+void EventWindow::closeEvent(QCloseEvent* event)
+{
+    (void)event;
+
+    mMainWindow->CloseSelectors(this);
+}
+
 void EventWindow::FileSelectionChanged()
 {
+    mMainWindow->CloseSelectors(this);
+
+    // Clear the search filter if set
+    if(!ui->treeSearch->text().isEmpty())
+    {
+        ui->treeSearch->blockSignals(true);
+        ui->treeSearch->setText("");
+        ui->treeSearch->blockSignals(false);
+    }
+
     Refresh(false);
 }
 
@@ -362,26 +438,22 @@ void EventWindow::LoadDirectory()
     QSettings settings;
 
     QString qPath = QFileDialog::getExistingDirectory(this,
-        tr("Load Event XML folder"), settings.value("datastore").toString());
+        tr("Load Event XML folder"), mMainWindow->GetDialogDirectory());
     if(qPath.isEmpty())
     {
         return;
     }
 
+    mMainWindow->SetDialogDirectory(qPath, false);
+
     ui->files->blockSignals(true);
 
     QDirIterator it(qPath, QStringList() << "*.xml", QDir::Files,
         QDirIterator::Subdirectories);
-    libcomp::String currentPath(ui->files->currentText().toUtf8()
-        .constData());
-    libcomp::String selectPath = currentPath;
     while(it.hasNext())
     {
         libcomp::String path = cs(it.next());
-        if(LoadFileFromPath(path) && selectPath.IsEmpty())
-        {
-            selectPath = path;
-        }
+        LoadFileFromPath(path);
     }
 
     ui->files->blockSignals(false);
@@ -398,11 +470,13 @@ void EventWindow::LoadFile()
     QSettings settings;
 
     QString qPath = QFileDialog::getOpenFileName(this, tr("Load Event XML"),
-        settings.value("datastore").toString(), tr("Event XML (*.xml)"));
+        mMainWindow->GetDialogDirectory(), tr("Event XML (*.xml)"));
     if(qPath.isEmpty())
     {
         return;
     }
+
+    mMainWindow->SetDialogDirectory(qPath, true);
 
     ui->files->blockSignals(true);
 
@@ -412,17 +486,14 @@ void EventWindow::LoadFile()
         RebuildGlobalIDMap();
         mMainWindow->ResetEventCount();
 
-        ui->files->blockSignals(false);
-
         if(ui->files->currentText() != qs(path))
         {
             ui->files->setCurrentText(qs(path));
         }
-        else
-        {
-            // Just refresh
-            Refresh(false);
-        }
+
+        ui->files->blockSignals(false);
+
+        Refresh(false);
     }
     else
     {
@@ -430,17 +501,49 @@ void EventWindow::LoadFile()
     }
 }
 
+void EventWindow::ReloadFile()
+{
+    auto fIter = mFiles.find(mCurrentFileName);
+    if(fIter == mFiles.end())
+    {
+        // No file
+        return;
+    }
+
+    auto file = fIter->second;
+
+    bool changeExists = file->Reordered ||
+        file->PendingRemovals.size() > 0;
+    for(auto fEvent : file->Events)
+    {
+        changeExists |= fEvent->HasUpdates;
+    }
+
+    if(changeExists)
+    {
+        auto reply = QMessageBox::question(this, "Confirm Reload",
+            QString("%1 has pending changes that will be lost by reloading."
+                " Is this okay?").arg(qs(mCurrentFileName)),
+            QMessageBox::Yes | QMessageBox::No);
+        if(reply != QMessageBox::Yes)
+        {
+            return;
+        }
+    }
+
+    LoadFileFromPath(mCurrentFileName);
+}
+
 void EventWindow::SaveFile()
 {
-    libcomp::String path = cs(ui->files->currentText());
-    if(path.IsEmpty())
+    if(mCurrentFileName.IsEmpty())
     {
         // No file, nothing to do
         return;
     }
 
     std::list<libcomp::String> paths;
-    paths.push_back(path);
+    paths.push_back(mCurrentFileName);
     SaveFiles(paths);
 }
 
@@ -460,12 +563,14 @@ void EventWindow::NewFile()
     QSettings settings;
 
     QString qPath = QFileDialog::getSaveFileName(this,
-        tr("Create new Event file"), settings.value("datastore").toString(),
+        tr("Create new Event file"), mMainWindow->GetDialogDirectory(),
         tr("Event XML (*.xml)"));
     if(qPath.isEmpty())
     {
         return;
     }
+
+    mMainWindow->SetDialogDirectory(qPath, true);
 
     QFileInfo fi(qPath);
     if(fi.exists() && fi.isFile())
@@ -487,12 +592,13 @@ void EventWindow::NewFile()
     if(LoadFileFromPath(cs(qPath)))
     {
         ui->files->setCurrentText(qPath);
+        Refresh(false);
     }
 }
 
 void EventWindow::RemoveEvent()
 {
-    auto fIter = mFiles.find(cs(ui->files->currentText()));
+    auto fIter = mFiles.find(mCurrentFileName);
     if(fIter == mFiles.end())
     {
         // No file
@@ -520,8 +626,60 @@ void EventWindow::RemoveEvent()
 
         RebuildLocalIDMap(file);
         RebuildGlobalIDMap();
+        EventRef::RefreshAllEventIDs(mMainWindow);
         mMainWindow->ResetEventCount();
         Refresh(false);
+    }
+}
+
+void EventWindow::Search()
+{
+    std::set<QTreeWidgetItem*> display;
+
+    QList<QTreeWidgetItem*> items = ui->treeWidget->findItems(
+        QString("*"), Qt::MatchWrap | Qt::MatchWildcard | Qt::MatchRecursive);
+
+    QString filter = ui->treeSearch->text();
+    if(filter.isEmpty())
+    {
+        // Display all
+        for(auto item : items)
+        {
+            display.insert(item);
+        }
+    }
+    else
+    {
+        // Filter on ID and text columns and expand parents
+        for(auto item : items)
+        {
+            if(display.find(item) == display.end() &&
+                (item->text(0).contains(filter) ||
+                item->text(2).contains(filter)))
+            {
+                display.insert(item);
+
+                auto parent = item->parent();
+                while(parent)
+                {
+                    display.insert(parent);
+                    parent = parent->parent();
+                }
+            }
+        }
+    }
+
+    for(auto item : items)
+    {
+        if(display.find(item) != display.end())
+        {
+            item->setHidden(false);
+            item->setExpanded(true);
+        }
+        else
+        {
+            item->setHidden(true);
+        }
     }
 }
 
@@ -533,7 +691,7 @@ void EventWindow::NewEvent()
         return;
     }
 
-    auto fIter = mFiles.find(cs(ui->files->currentText()));
+    auto fIter = mFiles.find(mCurrentFileName);
     if(fIter == mFiles.end())
     {
         // No file
@@ -570,12 +728,33 @@ void EventWindow::Refresh(bool reselectEvent)
     auto current = mCurrentEvent;
 
     libcomp::String path = cs(ui->files->currentText());
+    if(mFiles.find(path) == mFiles.end())
+    {
+        // Path is invalid, roll back to last valid one and do nothing
+        path = mCurrentFileName;
+
+        bool old = ui->files->blockSignals(true);
+        ui->files->setCurrentText(qs(path));
+        ui->files->blockSignals(old);
+
+        return;
+    }
+    else if(mCurrentFileName != path)
+    {
+        mCurrentFileName = path;
+        EventRef::RefreshAllEventIDs(mMainWindow);
+    }
 
     SelectFile(path);
 
     if(reselectEvent && current)
     {
         GoToEvent(current->FileEventID);
+    }
+
+    if(!ui->treeSearch->text().isEmpty())
+    {
+        Search();
     }
 }
 
@@ -589,6 +768,51 @@ void EventWindow::GoTo()
     }
 
     GoToEvent(cs(qEventID));
+}
+
+void EventWindow::Back()
+{
+    if(mPreviousEventIDs.size() > 0)
+    {
+        auto previousID = mPreviousEventIDs.back();
+        mPreviousEventIDs.pop_back();
+
+        ui->treeWidget->blockSignals(true);
+        GoToEvent(previousID);
+        ui->treeWidget->blockSignals(false);
+
+        BindSelectedEvent(false);
+
+        if(mPreviousEventIDs.size() == 0)
+        {
+            ui->eventBack->hide();
+        }
+        else
+        {
+            ui->eventBack->setText(QString("Back (%1)")
+                .arg(mPreviousEventIDs.size()));
+        }
+    }
+}
+
+void EventWindow::FileViewChanged()
+{
+    bool flat = ui->actionFileView->isChecked();
+    ui->actionMoveUp->setDisabled(!flat);
+    ui->actionMoveDown->setDisabled(!flat);
+    ui->actionChangeTreeIDs->setDisabled(flat);
+
+    Refresh(false);
+}
+
+void EventWindow::CollapseAll()
+{
+    ui->treeWidget->collapseAll();
+}
+
+void EventWindow::ExpandAll()
+{
+    ui->treeWidget->expandAll();
 }
 
 void EventWindow::CurrentEventEdited()
@@ -620,7 +844,416 @@ void EventWindow::CurrentEventEdited()
 
 void EventWindow::TreeSelectionChanged()
 {
-    BindSelectedEvent();
+    BindSelectedEvent(true);
+}
+
+void EventWindow::MoveUp()
+{
+    auto fIter = mFiles.find(mCurrentFileName);
+    if(fIter == mFiles.end() || !mCurrentEvent)
+    {
+        // No file or current event
+        return;
+    }
+
+    auto file = fIter->second;
+    if(ObjectList::Move(file->Events, mCurrentEvent, true))
+    {
+        file->Reordered = true;
+        RebuildLocalIDMap(file);
+        Refresh(true);
+    }
+}
+
+void EventWindow::MoveDown()
+{
+    auto fIter = mFiles.find(mCurrentFileName);
+    if(fIter == mFiles.end() || !mCurrentEvent)
+    {
+        // No file or current event
+        return;
+    }
+
+    auto file = fIter->second;
+    if(ObjectList::Move(file->Events, mCurrentEvent, false))
+    {
+        file->Reordered = true;
+        RebuildLocalIDMap(file);
+        Refresh(true);
+    }
+}
+
+void EventWindow::Reorganize()
+{
+    auto fIter = mFiles.find(mCurrentFileName);
+    if(fIter == mFiles.end())
+    {
+        // No file
+        return;
+    }
+
+    auto file = fIter->second;
+
+    std::list<libcomp::String> eventOrder;
+    std::set<libcomp::String> seen;
+    for(auto fEvent : file->Events)
+    {
+        auto e = fEvent->Event;
+
+        std::list<libcomp::String> eventSet;
+        eventSet.push_back(e->GetID());
+        eventSet.push_back(e->GetNext());
+        eventSet.push_back(e->GetQueueNext());
+
+        auto prompt = std::dynamic_pointer_cast<objects::EventPrompt>(e);
+        if(prompt)
+        {
+            for(auto c : prompt->GetChoices())
+            {
+                eventSet.push_back(c->GetNext());
+                eventSet.push_back(c->GetQueueNext());
+
+                for(auto b : c->GetBranches())
+                {
+                    eventSet.push_back(b->GetNext());
+                    eventSet.push_back(b->GetQueueNext());
+                }
+            }
+        }
+
+        for(auto b : e->GetBranches())
+        {
+            eventSet.push_back(b->GetNext());
+            eventSet.push_back(b->GetQueueNext());
+        }
+
+        for(auto eventID : eventSet)
+        {
+            if(!eventID.IsEmpty() && seen.find(eventID) == seen.end())
+            {
+                eventOrder.push_back(eventID);
+                seen.insert(eventID);
+            }
+        }
+    }
+
+    std::list<std::shared_ptr<FileEvent>> fEvents;
+    std::list<std::shared_ptr<FileEvent>> toEnd;
+    for(auto eventID : eventOrder)
+    {
+        bool added = false;
+        for(auto fEvent : file->Events)
+        {
+            if(fEvent->Event->GetID() == eventID)
+            {
+                if(added)
+                {
+                    toEnd.push_back(fEvent);
+                }
+                else
+                {
+                    fEvents.push_back(fEvent);
+                    added = true;
+                }
+            }
+        }
+    }
+
+    file->Events = fEvents;
+    for(auto fEvent : toEnd)
+    {
+        file->Events.push_back(fEvent);
+    }
+
+    RebuildLocalIDMap(file);
+    file->Reordered = true;
+    Refresh(true);
+}
+
+void EventWindow::ChangeCurrentEventID()
+{
+    if(mCurrentEvent)
+    {
+        ChangeEventID(mCurrentEvent->Event->GetID());
+    }
+}
+
+void EventWindow::ChangeFileEventIDs()
+{
+    auto fileIter = mFiles.find(mCurrentFileName);
+    if(fileIter == mFiles.end())
+    {
+        // Nothing to do
+        return;
+    }
+
+    auto file = fileIter->second;
+    if(file->Events.size() == 0)
+    {
+        // Nothing to do
+        return;
+    }
+    else if(file->Events.size() == 1)
+    {
+        // Do single rename instead
+        ChangeCurrentEventID();
+        return;
+    }
+
+    auto commonPrefix = GetCommonEventPrefix(file);
+
+    QString qPrefix = QInputDialog::getText(this, "Enter an ID prefix",
+        "New ID prefix", QLineEdit::Normal, qs(commonPrefix));
+    if(qPrefix.isEmpty())
+    {
+        return;
+    }
+
+    auto prefix = cs(qPrefix);
+
+    std::unordered_map<libcomp::String, libcomp::String> eventIDMap;
+
+    std::unordered_map<int32_t, size_t> sequences;
+    for(auto fEvent : file->Events)
+    {
+        int32_t key = (int32_t)fEvent->Event->GetEventType();
+        if(sequences.find(key) == sequences.end())
+        {
+            sequences[key] = 0;
+        }
+
+        auto typePrefix = GetEventTypePrefix(prefix,
+            fEvent->Event->GetEventType());
+
+        size_t& seq = sequences[key];
+        for(; seq < 999;)
+        {
+            seq++;
+
+            // Zero pad the number
+            auto str = libcomp::String("%1%2").Arg(typePrefix)
+                .Arg(libcomp::String("%1").Arg(1000 + seq).Right(3));
+            if(mGlobalIDMap.find(str) == mGlobalIDMap.end() ||
+                mGlobalIDMap[str] == file->Path)
+            {
+                eventIDMap[fEvent->Event->GetID()] = str;
+                break;
+            }
+        }
+
+        if(seq > 1000)
+        {
+            QMessageBox err;
+            err.setText("Event sequence exceeded 1000. Please split the file"
+                " into fewer events or rename by tree branches.");
+            err.exec();
+
+            break;
+        }
+    }
+
+    auto reply = QMessageBox::question(this, "Confirm Rename",
+        QString("%1 event IDs will be changed and all currently loaded event"
+            " references will be updated automatically however, no files will"
+            " be saved at this time. Only the current zone and loaded zone"
+            " partials will be updated. Please confirm this action.")
+        .arg(QString::number(eventIDMap.size())),
+        QMessageBox::Yes | QMessageBox::No);
+    if(reply != QMessageBox::Yes)
+    {
+        return;
+    }
+
+    // Deselect the tree so everything saves
+    ui->treeWidget->clearSelection();
+
+    // Update the events
+    for(auto fEvent : file->Events)
+    {
+        fEvent->Event->SetID(eventIDMap[fEvent->Event->GetID()]);
+        fEvent->HasUpdates = true;
+    }
+
+    ChangeEventIDs(eventIDMap);
+
+    // Rebuild maps and refresh
+    RebuildLocalIDMap(file);
+    RebuildGlobalIDMap();
+    EventRef::RefreshAllEventIDs(mMainWindow);
+    Refresh(false);
+}
+
+void EventWindow::ChangeTreeBranchIDs()
+{
+    auto fileIter = mFiles.find(mCurrentFileName);
+    if(fileIter == mFiles.end())
+    {
+        // Nothing to do
+        return;
+    }
+
+    auto file = fileIter->second;
+
+    std::list<EventTreeItem*> branchNodes;
+    for(auto selected : ui->treeWidget->selectedItems())
+    {
+        auto sNode = (EventTreeItem*)selected;
+        if(sNode->ExtensionNode) continue;
+
+        std::list<EventTreeItem*> parents;
+        parents.push_back(sNode);
+        while(parents.size() > 0)
+        {
+            auto p = parents.front();
+            parents.pop_front();
+
+            branchNodes.push_back(p);
+
+            int childCount = p->childCount();
+            for(int i = 0; i < childCount; i++)
+            {
+                parents.push_back((EventTreeItem*)p->child(i));
+            }
+        }
+    }
+
+    std::list<std::shared_ptr<FileEvent>> renames;
+    std::unordered_map<libcomp::String, libcomp::String> eventIDMap;
+    for(auto node : branchNodes)
+    {
+        if(node->FirstFileRef)
+        {
+            int32_t fileIdx = node->FileIdx;
+            if(fileIdx == -1)
+            {
+                fileIdx = file->EventIDMap[node->EventID];
+            }
+
+            auto eIter = file->Events.begin();
+            std::advance(eIter, fileIdx);
+
+            auto fEvent = *eIter;
+            renames.push_back(fEvent);
+            eventIDMap[fEvent->Event->GetID()] = "";
+        }
+        else if(!node->ExtensionNode)
+        {
+            QMessageBox err;
+            err.setText("The selected tree branch contains at least one event"
+                " that is not eligible for branch renaming. Ensure that all"
+                " nodes below the current selection are not referenced by"
+                " earlier events and are not references to external files.");
+            err.exec();
+            return;
+        }
+    }
+
+    if(renames.size() == 0)
+    {
+        // Nothing to do
+        return;
+    }
+    else if(renames.size() == 1)
+    {
+        // Do single rename instead
+        ChangeCurrentEventID();
+        return;
+    }
+
+    auto commonPrefix = GetCommonEventPrefix(file);
+
+    QString qPrefix = QInputDialog::getText(this, "Enter an ID prefix",
+        "New ID prefix", QLineEdit::Normal, qs(commonPrefix));
+    if(qPrefix.isEmpty())
+    {
+        return;
+    }
+
+    auto prefix = cs(qPrefix);
+
+    libcomp::String firstID;
+    libcomp::String lastID;
+
+    bool skipped = false;
+    size_t seq = 0;
+    for(auto fEvent : renames)
+    {
+        for(; seq < 999;)
+        {
+            seq++;
+
+            // Zero pad the number
+            auto str = libcomp::String("%1%2").Arg(prefix)
+                .Arg(libcomp::String("%1").Arg(1000 + seq).Right(3));
+            if(mGlobalIDMap.find(str) == mGlobalIDMap.end() ||
+                eventIDMap.find(str) != eventIDMap.end())
+            {
+                lastID = str;
+
+                if(firstID.IsEmpty())
+                {
+                    firstID = str;
+                }
+
+                eventIDMap[fEvent->Event->GetID()] = str;
+                break;
+            }
+            else
+            {
+                skipped = true;
+            }
+        }
+
+        if(seq > 1000)
+        {
+            break;
+        }
+    }
+
+    if(seq > 1000)
+    {
+        QMessageBox err;
+        err.setText("Event sequence exceeded 1000. Please select fewer"
+            " nodes to change.");
+        err.exec();
+
+        return;
+    }
+    else
+    {
+        auto reply = QMessageBox::question(this, "Confirm Rename",
+            QString("%1 event IDs will be changed to '%2' through '%3'%4 and"
+                " all currently loaded event references will be updated"
+                " automatically however, no files will be saved at this time."
+                " Only the current zone and loaded zone partials will be"
+                " updated. Please confirm this action.")
+            .arg(QString::number(eventIDMap.size()))
+            .arg(qs(firstID)).arg(qs(lastID))
+            .arg(skipped ? " (with gaps from existing IDs)" : ""),
+            QMessageBox::Yes | QMessageBox::No);
+        if(reply != QMessageBox::Yes)
+        {
+            return;
+        }
+
+        // Deselect the tree so everything saves
+        ui->treeWidget->clearSelection();
+
+        // Update the events
+        for(auto fEvent : renames)
+        {
+            fEvent->Event->SetID(eventIDMap[fEvent->Event->GetID()]);
+            fEvent->HasUpdates = true;
+        }
+
+        ChangeEventIDs(eventIDMap);
+
+        // Rebuild maps and refresh
+        RebuildLocalIDMap(file);
+        RebuildGlobalIDMap();
+        EventRef::RefreshAllEventIDs(mMainWindow);
+        Refresh(false);
+    }
 }
 
 bool EventWindow::LoadFileFromPath(const libcomp::String& path)
@@ -731,6 +1364,10 @@ bool EventWindow::SelectFile(const libcomp::String& path)
     // Clean up the current tree
     ui->treeWidget->clear();
 
+    // Drop previous events
+    mPreviousEventIDs.clear();
+    ui->eventBack->hide();
+
     // Add events to the tree
     auto file = iter->second;
 
@@ -752,6 +1389,9 @@ bool EventWindow::SelectFile(const libcomp::String& path)
         fileIdx++;
         dupeCheck.insert(e->GetID());
     }
+
+    mPreviousEventIDs.clear();
+    ui->eventBack->hide();
 
     ui->treeWidget->expandAll();
     ui->treeWidget->resizeColumnToContents(0);
@@ -777,6 +1417,10 @@ void EventWindow::SaveFiles(const std::list<libcomp::String>& paths)
     {
         std::list<std::shared_ptr<FileEvent>> updates;
 
+        // Make sure we don't have dupes
+        bool hasDupe = false;
+        std::set<libcomp::String> allEventIDs;
+
         auto file = mFiles[path];
         for(auto fEvent : file->Events)
         {
@@ -784,11 +1428,31 @@ void EventWindow::SaveFiles(const std::list<libcomp::String>& paths)
             {
                 updates.push_back(fEvent);
             }
+
+            if(allEventIDs.find(fEvent->Event->GetID()) == allEventIDs.end())
+            {
+                allEventIDs.insert(fEvent->Event->GetID());
+            }
+            else
+            {
+                hasDupe = true;
+            }
         }
 
-        if(updates.size() == 0 && file->PendingRemovals.size() == 0)
+        if(updates.size() == 0 && file->PendingRemovals.size() == 0 &&
+            !file->Reordered)
         {
             // Nothing to save
+            continue;
+        }
+
+        if(hasDupe)
+        {
+            QMessageBox err;
+            err.setText(QString("File '%1' cannot be saved because it has at"
+                " least one duplicate event ID.").arg(qs(path)));
+            err.exec();
+
             continue;
         }
 
@@ -824,7 +1488,8 @@ void EventWindow::SaveFiles(const std::list<libcomp::String>& paths)
                     {
                         auto txtChild = member->FirstChild();
                         auto txt = txtChild ? txtChild->ToText() : 0;
-                        if(txt)
+                        if(txt && existingEvents.find(txt->Value()) ==
+                            existingEvents.end())
                         {
                             existingEvents[txt->Value()] = child;
                         }
@@ -905,6 +1570,67 @@ void EventWindow::SaveFiles(const std::list<libcomp::String>& paths)
             fEvent->FileEventID = e->GetID();
         }
 
+        // Reorder if flagged
+        if(file->Reordered)
+        {
+            // Regather events by ID
+            existingEvents.clear();
+
+            auto child = rootElem->FirstChild();
+            while(child != 0)
+            {
+                auto member = child->FirstChildElement("member");
+                while(member != 0)
+                {
+                    libcomp::String memberName(member->Attribute("name"));
+                    if(memberName == "ID")
+                    {
+                        auto txtChild = member->FirstChild();
+                        auto txt = txtChild ? txtChild->ToText() : 0;
+                        if(txt)
+                        {
+                            existingEvents[txt->Value()] = child;
+                        }
+                        break;
+                    }
+
+                    member = member->NextSiblingElement("member");
+                }
+
+                child = child->NextSibling();
+            }
+
+            // Now reorganize
+            tinyxml2::XMLNode* last = 0;
+            for(auto fEvent : file->Events)
+            {
+                auto id = fEvent->Event->GetID();
+
+                auto iter = existingEvents.find(id);
+                if(iter == existingEvents.end()) continue;
+
+                child = existingEvents[id];
+                existingEvents.erase(id);
+
+                if(last == 0)
+                {
+                    if(child->PreviousSiblingElement("object") != 0)
+                    {
+                        // Move first event to the top
+                        rootElem->InsertFirstChild(child);
+                    }
+                }
+                else if(last->NextSiblingElement() != child->ToElement())
+                {
+                    rootElem->InsertAfterChild(last, child);
+                }
+
+                last = child;
+            }
+
+            file->Reordered = false;
+        }
+
         if(updatedNodes.size() > 0)
         {
             XmlHandler::SimplifyObjects(updatedNodes);
@@ -948,7 +1674,7 @@ std::shared_ptr<objects::Event> EventWindow::GetNewEvent(
     }
 }
 
-void EventWindow::BindSelectedEvent()
+void EventWindow::BindSelectedEvent(bool storePrevious)
 {
     auto previousEvent = mCurrentEvent;
     mCurrentEvent = nullptr;
@@ -963,7 +1689,7 @@ void EventWindow::BindSelectedEvent()
     std::shared_ptr<EventFile> file;
     if(selected)
     {
-        auto iter = mFiles.find(cs(ui->files->currentText()));
+        auto iter = mFiles.find(mCurrentFileName);
         if(iter != mFiles.end())
         {
             file = iter->second;
@@ -1110,16 +1836,25 @@ void EventWindow::BindSelectedEvent()
         }
     }
 
-    // If the previous current event was updated, update the event definition
-    // from the current control (should only be one)
-    if(previousEvent && previousEvent->HasUpdates)
+    if(previousEvent)
     {
-        for(auto eCtrl : ui->splitter->findChildren<Event*>())
+        // If the previous current event was updated, update the event
+        // definition from the current control (should only be one)
+        if(previousEvent->HasUpdates)
         {
-            if(previousEvent->Event == eCtrl->Save())
+            for(auto eCtrl : ui->splitter->findChildren<Event*>())
             {
-                previousEvent->Comments = eCtrl->GetComments();
+                mMainWindow->CloseSelectors(eCtrl);
+                if(previousEvent->Event == eCtrl->Save())
+                {
+                    previousEvent->Comments = eCtrl->GetComments();
+                }
             }
+        }
+
+        if(storePrevious)
+        {
+            UpdatePreviousEvents(previousEvent->Event->GetID());
         }
     }
 
@@ -1143,11 +1878,16 @@ void EventWindow::BindSelectedEvent()
         ui->layoutView->insertWidget(1, eNode);
 
         ui->removeEvent->show();
+        ui->actionMoveUp->setDisabled(false);
+        ui->actionMoveDown->setDisabled(false);
     }
     else
     {
-        ui->removeEvent->hide();
         ui->lblNoCurrent->show();
+
+        ui->removeEvent->hide();
+        ui->actionMoveUp->setDisabled(true);
+        ui->actionMoveDown->setDisabled(true);
     }
 }
 
@@ -1225,6 +1965,11 @@ void EventWindow::AddEventToTree(const libcomp::String& id,
         return;
     }
 
+    if(ui->actionFileView->isChecked() && parent)
+    {
+        return;
+    }
+
     EventTreeItem* item = 0;
     std::shared_ptr<objects::Event> e;
     if(eventIdx == -1)
@@ -1273,6 +2018,7 @@ void EventWindow::AddEventToTree(const libcomp::String& id,
 
         e = (*eIter)->Event;
         item = new EventTreeItem(parent, id);
+        item->FirstFileRef = true;
 
         item->setText(0, qs(id));
 
@@ -1291,6 +2037,8 @@ void EventWindow::AddEventToTree(const libcomp::String& id,
 
         e = (*eIter)->Event;
         item = new EventTreeItem(parent, "", eventIdx);
+        item->FirstFileRef = true;
+
         item->setText(0, qs(libcomp::String("%1 [Duplicate]").Arg(id)));
         item->setTextColor(0, QColor(255, 0, 0));
 
@@ -1348,50 +2096,89 @@ void EventWindow::AddEventToTree(const libcomp::String& id,
         break;
     case objects::Event::EventType_t::MULTITALK:
         {
-            auto multi = std::dynamic_pointer_cast<
-                objects::EventMultitalk>(e);
-
             item->setText(1, "Multitalk");
         }
         break;
     case objects::Event::EventType_t::PROMPT:
+    case objects::Event::EventType_t::ITIME:
         {
             auto prompt = std::dynamic_pointer_cast<
                 objects::EventPrompt>(e);
 
-            auto cMessage = mMainWindow->GetEventMessage(prompt
-                ->GetMessageID());
-            item->setText(1, "Prompt");
-            item->setText(2, cMessage ? qs(GetInlineMessageText(
-                libcomp::String::Join(cMessage->GetLines(), "  "))) : "");
+            std::unordered_map<EventTreeItem*, int32_t> messageNodes;
+            messageNodes[item] = prompt->GetMessageID();
 
-            for(size_t i = 0; i < prompt->ChoicesCount(); i++)
+            bool iTime = e->GetEventType() ==
+                objects::Event::EventType_t::ITIME;
+            if(iTime)
             {
-                auto choice = prompt->GetChoices(i);
+                item->setText(1, "I-Time");
+            }
+            else
+            {
+                item->setText(1, "Prompt");
+            }
 
-                EventTreeItem* cNode = new EventTreeItem(item, id);
-
-                cMessage = mMainWindow->GetEventMessage(choice
-                    ->GetMessageID());
-                cNode->setText(0, qs(libcomp::String("[%1]").Arg(i + 1)));
-                cNode->setText(1, "Prompt Choice");
-                cNode->setText(2, cMessage ? qs(GetInlineMessageText(
-                    libcomp::String::Join(cMessage->GetLines(), "  "))) : "");
-
-                // Add regardless of next results
-                AddEventToTree(choice->GetNext(), cNode, file, seen);
-                AddEventToTree(choice->GetQueueNext(), cNode, file, seen);
-
-                if(choice->BranchesCount() > 0)
+            if(!ui->actionFileView->isChecked())
+            {
+                for(size_t i = 0; i < prompt->ChoicesCount(); i++)
                 {
-                    EventTreeItem* bNode = new EventTreeItem(cNode, id);
+                    auto choice = prompt->GetChoices(i);
 
-                    bNode->setText(0, "[Branches]");
+                    EventTreeItem* cNode = new EventTreeItem(item, id);
+                    cNode->ExtensionNode = true;
 
-                    for(auto b : choice->GetBranches())
+                    cNode->setText(0, qs(libcomp::String("[%1]").Arg(i + 1)));
+                    cNode->setText(1, iTime
+                        ? "I-Time Choice" : "Prompt Choice");
+
+                    messageNodes[cNode] = choice->GetMessageID();
+
+                    // Add regardless of next results
+                    AddEventToTree(choice->GetNext(), cNode, file, seen);
+                    AddEventToTree(choice->GetQueueNext(), cNode, file, seen);
+
+                    if(choice->BranchesCount() > 0)
                     {
-                        AddEventToTree(b->GetNext(), bNode, file, seen);
-                        AddEventToTree(b->GetQueueNext(), bNode, file, seen);
+                        EventTreeItem* bNode = new EventTreeItem(cNode, id);
+                        bNode->ExtensionNode = true;
+
+                        bNode->setText(0, "[Branches]");
+
+                        for(auto b : choice->GetBranches())
+                        {
+                            AddEventToTree(b->GetNext(), bNode, file, seen);
+                            AddEventToTree(b->GetQueueNext(), bNode, file,
+                                seen);
+                        }
+                    }
+                }
+            }
+
+            if(iTime)
+            {
+                auto dataset = std::dynamic_pointer_cast<BinaryDataNamedSet>(
+                    mMainWindow->GetBinaryDataSet("CHouraiMessageData"));
+                for(auto& pair : messageNodes)
+                {
+                    auto txt = dataset->GetName(dataset
+                        ->GetObjectByID((uint32_t)pair.second));
+                    if(txt.Length() > 0)
+                    {
+                        pair.first->setText(2, qs(GetInlineMessageText(txt)));
+                    }
+                }
+            }
+            else
+            {
+                for(auto& pair : messageNodes)
+                {
+                    auto cMessage = mMainWindow->GetEventMessage(pair.second);
+                    if(cMessage)
+                    {
+                        pair.first->setText(2, qs(GetInlineMessageText(
+                            libcomp::String::Join(cMessage->GetLines(),
+                                "  "))));
                     }
                 }
             }
@@ -1403,49 +2190,77 @@ void EventWindow::AddEventToTree(const libcomp::String& id,
                 objects::EventPerformActions>(e);
 
             item->setText(1, "Perform Actions");
+
+            // Print any messages to the line in order
+            std::list<int32_t> messageIDs;
+            for(auto action : pa->GetActions())
+            {
+                switch(action->GetActionType())
+                {
+                case objects::Action::ActionType_t::DISPLAY_MESSAGE:
+                    {
+                        auto act = std::dynamic_pointer_cast<
+                            objects::ActionDisplayMessage>(action);
+                        for(int32_t messageID : act->GetMessageIDs())
+                        {
+                            messageIDs.push_back(messageID);
+                        }
+                    }
+                    break;
+                case objects::Action::ActionType_t::STAGE_EFFECT:
+                    {
+                        auto act = std::dynamic_pointer_cast<
+                            objects::ActionStageEffect>(action);
+                        messageIDs.push_back(act->GetMessageID());
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }
+
+            if(messageIDs.size() > 0)
+            {
+                std::list<libcomp::String> messages;
+                for(int32_t messageID : messageIDs)
+                {
+                    auto cMessage = mMainWindow->GetEventMessage(messageID);
+                    if(cMessage && cMessage->LinesCount() > 0)
+                    {
+                        messages.push_back(GetInlineMessageText(
+                            libcomp::String::Join(cMessage->GetLines(),
+                                "  ")));
+                    }
+                }
+
+                item->setText(2, qs(libcomp::String::Join(messages, " => ")));
+            }
         }
         break;
     case objects::Event::EventType_t::OPEN_MENU:
         {
-            auto menu = std::dynamic_pointer_cast<
-                objects::EventOpenMenu>(e);
-
             item->setText(1, "Open Menu");
         }
         break;
     case objects::Event::EventType_t::PLAY_SCENE:
         {
-            auto scene = std::dynamic_pointer_cast<
-                objects::EventPlayScene>(e);
-
             item->setText(1, "Play Scene");
         }
         break;
     case objects::Event::EventType_t::DIRECTION:
         {
-            auto dir = std::dynamic_pointer_cast<
-                objects::EventDirection>(e);
-
             item->setText(1, "Direction");
-        }
-        break;
-    case objects::Event::EventType_t::ITIME:
-        {
-            auto iTime = std::dynamic_pointer_cast<
-                objects::EventITime>(e);
-
-            /// @todo: load I-Time strings
-            item->setText(1, "I-Time");
         }
         break;
     default:
         break;
     }
 
-    if(e->BranchesCount() > 0)
+    if(e->BranchesCount() > 0 && !ui->actionFileView->isChecked())
     {
         // Add under branches child node
         EventTreeItem* bNode = new EventTreeItem(item, id);
+        bNode->ExtensionNode = true;
 
         bNode->setText(0, "[Branches]");
 
@@ -1620,12 +2435,9 @@ bool EventWindow::ChangeActionEventIDs(const std::unordered_map<
     return updated;
 }
 
-libcomp::String EventWindow::GetNewEventID(
-    const std::shared_ptr<EventFile>& file,
-    objects::Event::EventType_t eventType)
+libcomp::String EventWindow::GetCommonEventPrefix(
+    const std::shared_ptr<EventFile>& file)
 {
-    // Suggest an ID that is not already taken based off current IDs in
-    // the file and cross checked against other loaded files
     libcomp::String commonPrefix;
 
     auto eIter = file->Events.begin();
@@ -1652,50 +2464,69 @@ libcomp::String EventWindow::GetNewEventID(
         }
     }
 
+    return commonPrefix;
+}
+
+libcomp::String EventWindow::GetEventTypePrefix(const libcomp::String& prefix,
+    objects::Event::EventType_t eventType)
+{
+    libcomp::String newPrefix = prefix;
+
+    // Add type abbreviation and increase number until new ID is found
+    if(newPrefix.Right(1) == "_")
+    {
+        // Remove double underscore
+        newPrefix = newPrefix.Left((size_t)(newPrefix.Length() - 1));
+    }
+
+    switch(eventType)
+    {
+    case objects::Event::EventType_t::NPC_MESSAGE:
+        newPrefix += "_NM";
+        break;
+    case objects::Event::EventType_t::EX_NPC_MESSAGE:
+        newPrefix += "_EX";
+        break;
+    case objects::Event::EventType_t::MULTITALK:
+        newPrefix += "_ML";
+        break;
+    case objects::Event::EventType_t::PROMPT:
+        newPrefix += "_PR";
+        break;
+    case objects::Event::EventType_t::PERFORM_ACTIONS:
+        newPrefix += "_PA";
+        break;
+    case objects::Event::EventType_t::OPEN_MENU:
+        newPrefix += "_ME";
+        break;
+    case objects::Event::EventType_t::PLAY_SCENE:
+        newPrefix += "_SC";
+        break;
+    case objects::Event::EventType_t::DIRECTION:
+        newPrefix += "_DR";
+        break;
+    case objects::Event::EventType_t::ITIME:
+        newPrefix += "_IT";
+        break;
+    case objects::Event::EventType_t::FORK:
+    default:
+        newPrefix += "_";
+        break;
+    }
+
+    return newPrefix;
+}
+
+libcomp::String EventWindow::GetNewEventID(
+    const std::shared_ptr<EventFile>& file,
+    objects::Event::EventType_t eventType)
+{
+    // Suggest an ID that is not already taken based off current IDs in
+    // the file and cross checked against other loaded files
+    auto commonPrefix = GetCommonEventPrefix(file);
     if(commonPrefix.Length() > 0)
     {
-        // Add type abbreviation and increase number until new ID is found
-        if(commonPrefix.Right(1) == "_")
-        {
-            // Remove double underscore
-            commonPrefix = commonPrefix.Left((size_t)(
-                commonPrefix.Length() - 1));
-        }
-
-        switch(eventType)
-        {
-        case objects::Event::EventType_t::NPC_MESSAGE:
-            commonPrefix += "_NM";
-            break;
-        case objects::Event::EventType_t::EX_NPC_MESSAGE:
-            commonPrefix += "_EX";
-            break;
-        case objects::Event::EventType_t::MULTITALK:
-            commonPrefix += "_ML";
-            break;
-        case objects::Event::EventType_t::PROMPT:
-            commonPrefix += "_PR";
-            break;
-        case objects::Event::EventType_t::PERFORM_ACTIONS:
-            commonPrefix += "_PA";
-            break;
-        case objects::Event::EventType_t::OPEN_MENU:
-            commonPrefix += "_ME";
-            break;
-        case objects::Event::EventType_t::PLAY_SCENE:
-            commonPrefix += "_SC";
-            break;
-        case objects::Event::EventType_t::DIRECTION:
-            commonPrefix += "_DR";
-            break;
-        case objects::Event::EventType_t::ITIME:
-            commonPrefix += "_IT";
-            break;
-        case objects::Event::EventType_t::FORK:
-        default:
-            commonPrefix += "_";
-            break;
-        }
+        commonPrefix = GetEventTypePrefix(commonPrefix, eventType);
     }
 
     libcomp::String suggestedID(commonPrefix);
@@ -1751,6 +2582,31 @@ libcomp::String EventWindow::GetNewEventID(
     }
 
     return eventID;
+}
+
+void EventWindow::UpdatePreviousEvents(const libcomp::String& last)
+{
+    auto oldList = mPreviousEventIDs;
+
+    if(oldList.size() >= 10)
+    {
+        oldList.pop_front();
+    }
+
+    mPreviousEventIDs.clear();
+    for(auto eventID : oldList)
+    {
+        if(eventID != last)
+        {
+            mPreviousEventIDs.push_back(eventID);
+        }
+    }
+
+    mPreviousEventIDs.push_back(last);
+
+    ui->eventBack->setText(QString("Back (%1)")
+        .arg(mPreviousEventIDs.size()));
+    ui->eventBack->show();
 }
 
 void EventWindow::RebuildLocalIDMap(const std::shared_ptr<EventFile>& file)
