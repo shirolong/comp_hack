@@ -27,11 +27,13 @@
 // Cathedral Includes
 #include "BinaryDataNamedSet.h"
 #include "DropSetList.h"
+#include "FindRefWindow.h"
 #include "MainWindow.h"
 #include "XmlHandler.h"
 
 // Qt Includes
 #include <PushIgnore.h>
+#include <QCloseEvent>
 #include <QDirIterator>
 #include <QFileDialog>
 #include <QInputDialog>
@@ -54,7 +56,7 @@ public:
 };
 
 DropSetWindow::DropSetWindow(MainWindow *pMainWindow, QWidget *pParent) :
-    QMainWindow(pParent), mMainWindow(pMainWindow)
+    QMainWindow(pParent), mMainWindow(pMainWindow), mFindWindow(0)
 {
     ui = new Ui::DropSetWindow;
     ui->setupUi(this);
@@ -68,6 +70,7 @@ DropSetWindow::DropSetWindow(MainWindow *pMainWindow, QWidget *pParent) :
     connect(ui->actionSave, SIGNAL(triggered()), this, SLOT(SaveFile()));
     connect(ui->actionSaveAll, SIGNAL(triggered()), this,
         SLOT(SaveAllFiles()));
+    connect(ui->actionFind, SIGNAL(triggered()), this, SLOT(Find()));
     connect(ui->files, SIGNAL(currentIndexChanged(const QString&)), this,
         SLOT(FileSelectionChanged()));
 
@@ -188,7 +191,18 @@ size_t DropSetWindow::GetLoadedDropSetCount()
 
 void DropSetWindow::closeEvent(QCloseEvent* event)
 {
-    (void)event;
+    if(mFindWindow)
+    {
+        if(!mFindWindow->close())
+        {
+            // Close failed (possibly searching) so ignore
+            event->ignore();
+            return;
+        }
+
+        mFindWindow->deleteLater();
+        mFindWindow = 0;
+    }
 
     mMainWindow->CloseSelectors(this);
 }
@@ -434,6 +448,19 @@ void DropSetWindow::Refresh()
 void DropSetWindow::SelectDropSet()
 {
     ui->remove->setDisabled(ui->dropSetList->GetActiveObject() == nullptr);
+}
+
+void DropSetWindow::Find()
+{
+    if(!mFindWindow)
+    {
+        mFindWindow = new FindRefWindow(mMainWindow);
+    }
+
+    auto selected = std::dynamic_pointer_cast<objects::DropSet>(
+        ui->dropSetList->GetActiveObject());
+
+    mFindWindow->Open("DropSet", selected ? selected->GetID() : 0);
 }
 
 bool DropSetWindow::LoadFileFromPath(const libcomp::String& path)

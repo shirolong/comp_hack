@@ -78,6 +78,7 @@ SET(${PROJECT_NAME}_SRCS
     src/EventPromptUI.cpp
     src/EventRef.cpp
     src/EventWindow.cpp
+    src/FindRefWindow.cpp
     src/ItemDropUI.cpp
     src/MainWindow.cpp
     src/NPCList.cpp
@@ -152,6 +153,7 @@ SET(${PROJECT_NAME}_HDRS
     src/EventPromptUI.h
     src/EventRef.h
     src/EventWindow.h
+    src/FindRefWindow.h
     src/ItemDropUI.h
     src/MainWindow.h
     src/NPCList.h
@@ -229,8 +231,11 @@ SET(${PROJECT_NAME}_UIS
     ui/EventPrompt.ui
     ui/EventRef.ui
     ui/EventWindow.ui
+    ui/FindEventAction.ui
+    ui/FindRefWindow.ui
     ui/ItemDrop.ui
     ui/MainWindow.ui
+    ui/NPCProperties.ui
     ui/ObjectList.ui
     ui/ObjectPosition.ui
     ui/ObjectSelector.ui
@@ -241,14 +246,11 @@ SET(${PROJECT_NAME}_UIS
     ui/SpawnLocation.ui
     ui/SpawnLocationGroup.ui
     ui/SpawnRestriction.ui
+    ui/SpotProperties.ui
     ui/SpotRef.ui
     ui/ZonePartialSelector.ui
     ui/ZoneTrigger.ui
     ui/ZoneWindow.ui
-
-    # Properties for each object.
-    ui/NPCProperties.ui
-    ui/SpotProperties.ui
 )
 qt5_wrap_ui(${PROJECT_NAME}_UI_SRCS ${${PROJECT_NAME}_UIS})
 

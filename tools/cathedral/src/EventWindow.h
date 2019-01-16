@@ -47,6 +47,13 @@ class Action;
 
 } // namespace objects
 
+namespace Ui
+{
+
+class FindEventAction;
+
+} // namespace Ui
+
 class EventFile;
 class EventTreeItem;
 class FileEvent;
@@ -69,6 +76,13 @@ public:
 
     std::list<libcomp::String> GetCurrentEventIDs() const;
 
+    libcomp::String GetCurrentFile() const;
+
+    std::list<libcomp::String> GetCurrentFiles() const;
+
+    std::list<std::shared_ptr<objects::Event>> GetFileEvents(
+        const libcomp::String& path) const;
+
     void closeEvent(QCloseEvent* event) override;
 
 private slots:
@@ -84,6 +98,8 @@ private slots:
     void Search();
     void Refresh(bool reselectEvent = true);
     void GoTo();
+    void FindAction();
+    void FindNextAction();
     void Back();
     void FileViewChanged();
     void CollapseAll();
@@ -120,6 +136,9 @@ private:
         libcomp::String>& idMap, const std::list<std::shared_ptr<
         objects::Action>>& actions);
 
+    std::list<std::shared_ptr<objects::Action>> GetAllActions(
+        const std::list<std::shared_ptr<objects::Action>>& actions);
+
     libcomp::String GetCommonEventPrefix(
         const std::shared_ptr<EventFile>& file);
     libcomp::String GetEventTypePrefix(const libcomp::String& prefix,
@@ -146,6 +165,9 @@ private:
     std::list<libcomp::String> mPreviousEventIDs;
 
     Ui::EventWindow *ui;
+
+    QWidget *findActionWidget;
+    Ui::FindEventAction *findAction;
 };
 
 #endif // TOOLS_CATHEDRAL_SRC_EVENTWINDOW_H
