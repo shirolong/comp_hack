@@ -966,9 +966,18 @@ void SkillManager::SendFailure(const std::shared_ptr<ActiveEntityState> source,
     }
 }
 
-bool SkillManager::SkillRestricted(const std::shared_ptr<ActiveEntityState> source,
+bool SkillManager::SkillRestricted(
+    const std::shared_ptr<ActiveEntityState> source,
     const std::shared_ptr<objects::MiSkillData>& skillData)
 {
+    if(skillData->GetDamage()->GetFunctionID() ==
+        SVR_CONST.SKILL_DIASPORA_QUAKE)
+    {
+        // The current state of the source is not checked for quakes, they
+        // just need to be alive when processed
+        return false;
+    }
+
     if(source->StatusRestrictActCount() > 0)
     {
         return true;
@@ -4032,37 +4041,7 @@ void SkillManager::ProcessSkillResultFinal(const std::shared_ptr<ProcessingSkill
     // Report each revived entity
     if(revived.size() > 0)
     {
-        for(auto entity : revived)
-        {
-            libcomp::Packet p;
-            if(characterManager->GetEntityRevivalPacket(p, entity, 6))
-            {
-                zoneManager->BroadcastPacket(zone, p);
-            }
-
-            // Clear the death time-out if one exists
-            if(entity->GetDeathTimeOut())
-            {
-                auto entityCState = ClientState::GetEntityClientState(
-                    entity->GetEntityID());
-                zoneManager->UpdateDeathTimeOut(entityCState, -1);
-            }
-        }
-
-        // Trigger revival actions (but not respawn)
-        auto reviveTriggers = zoneManager->GetZoneTriggers(zone,
-            ZoneTrigger_t::ON_REVIVAL);
-        if(reviveTriggers.size() > 0)
-        {
-            auto managerConnection = server->GetManagerConnection();
-            for(auto entity : revived)
-            {
-                auto client = managerConnection->GetEntityClient(entity
-                    ->GetEntityID());
-                zoneManager->HandleZoneTriggers(zone, reviveTriggers, entity,
-                    client);
-            }
-        }
+        HandleRevives(zone, revived, pSkill);
     }
 
     // Set all killed entities
@@ -6371,6 +6350,69 @@ void SkillManager::HandleEncounterDefeat(const std::shared_ptr<
                         zone, options);
                 }
             }
+        }
+    }
+}
+
+void SkillManager::HandleRevives(const std::shared_ptr<Zone>& zone,
+    const std::set<std::shared_ptr<ActiveEntityState>> revived,
+    const std::shared_ptr<channel::ProcessingSkill>& pSkill)
+{
+    auto server = mServer.lock();
+    auto characterManager = server->GetCharacterManager();
+    auto zoneManager = server->GetZoneManager();
+
+    double maxLoss = 0.01;
+    double lossDrop = 0.00005;
+
+    auto rateIter = SVR_CONST.ADJUSTMENT_SKILLS.find(pSkill->SkillID);
+    if(rateIter != SVR_CONST.ADJUSTMENT_SKILLS.end() &&
+        rateIter->second[0] == 5)
+    {
+        maxLoss = (double)rateIter->second[2] / 100000;
+        lossDrop = (double)rateIter->second[1] / 100000;
+    }
+
+    for(auto entity : revived)
+    {
+        libcomp::Packet p;
+        if(characterManager->GetEntityRevivalPacket(p, entity, 6))
+        {
+            zoneManager->BroadcastPacket(zone, p);
+        }
+
+        // Clear the death time-out if one exists
+        if(entity->GetDeathTimeOut())
+        {
+            auto entityCState = ClientState::GetEntityClientState(
+                entity->GetEntityID());
+            zoneManager->UpdateDeathTimeOut(entityCState, -1);
+        }
+
+        auto cState = std::dynamic_pointer_cast<CharacterState>(entity);
+        if(cState && maxLoss > 0.f)
+        {
+            float xpLossPercent = (float)(maxLoss - (lossDrop * cState
+                ->GetCoreStats()->GetLevel()));
+            if(xpLossPercent > 0.f)
+            {
+                characterManager->UpdateRevivalXP(cState, xpLossPercent);
+            }
+        }
+    }
+
+    // Trigger revival actions (but not respawn)
+    auto reviveTriggers = zoneManager->GetZoneTriggers(zone,
+        ZoneTrigger_t::ON_REVIVAL);
+    if(reviveTriggers.size() > 0)
+    {
+        auto managerConnection = server->GetManagerConnection();
+        for(auto entity : revived)
+        {
+            auto client = managerConnection->GetEntityClient(entity
+                ->GetEntityID());
+            zoneManager->HandleZoneTriggers(zone, reviveTriggers, entity,
+                client);
         }
     }
 }
