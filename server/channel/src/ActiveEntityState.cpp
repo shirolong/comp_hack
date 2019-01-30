@@ -1325,6 +1325,12 @@ std::set<uint32_t> ActiveEntityState::CancelStatusEffects(
 void ActiveEntityState::SetStatusEffectsActive(bool activate,
     libcomp::DefinitionManager* definitionManager, uint32_t now)
 {
+    if(activate && !EntityIsSet())
+    {
+        // Do not activate effects if no entity is set yet
+        return;
+    }
+
     if(now == 0)
     {
         now = (uint32_t)std::time(0);
@@ -2218,6 +2224,11 @@ bool ActiveEntityState::Ready(bool ignoreDisplayState)
     return false;
 }
 
+bool ActiveEntityState::EntityIsSet() const
+{
+    return false;
+}
+
 bool ActiveEntityState::IsClientVisible()
 {
     return false;
@@ -2840,34 +2851,8 @@ void ActiveEntityState::GetAdditionalCorrectTbls(
     std::list<std::shared_ptr<objects::MiCorrectTbl>>& adjustments)
 {
     // 1) Gather skill adjustments
-    for(auto skillID : GetCurrentSkills())
-    {
-        auto skillData = definitionManager->GetSkillData(skillID);
-        auto common = skillData->GetCommon();
-
-        bool include = false;
-        switch(common->GetCategory()->GetMainCategory())
-        {
-        case 0:
-            // Passive
-            include = true;
-            break;
-        case 2:
-            // Switch
-            include = ActiveSwitchSkillsContains(skillID);
-            break;
-        default:
-            break;
-        }
-
-        if(include && !DisabledSkillsContains(skillID))
-        {
-            for(auto ct : common->GetCorrectTbl())
-            {
-                adjustments.push_back(ct);
-            }
-        }
-    }
+    auto currentSkillIDs = GetCurrentSkills();
+    ApplySkillCorrectTbls(currentSkillIDs, definitionManager, adjustments);
 
     // 2) Gather status effect adjustments
     for(auto ePair : GetStatusEffects())
@@ -2915,6 +2900,41 @@ void ActiveEntityState::GetAdditionalCorrectTbls(
             (a->GetValue() == 0 ||
             ((b->GetType() % 100) == 0));
     });
+}
+
+void ActiveEntityState::ApplySkillCorrectTbls(
+    const std::set<uint32_t>& skillIDs,
+    libcomp::DefinitionManager* definitionManager,
+    std::list<std::shared_ptr<objects::MiCorrectTbl>>& adjustments)
+{
+    for(auto skillID : skillIDs)
+    {
+        auto skillData = definitionManager->GetSkillData(skillID);
+        auto common = skillData->GetCommon();
+
+        bool include = false;
+        switch(common->GetCategory()->GetMainCategory())
+        {
+        case 0:
+            // Passive
+            include = true;
+            break;
+        case 2:
+            // Switch
+            include = ActiveSwitchSkillsContains(skillID);
+            break;
+        default:
+            break;
+        }
+
+        if(include && !DisabledSkillsContains(skillID))
+        {
+            for(auto ct : common->GetCorrectTbl())
+            {
+                adjustments.push_back(ct);
+            }
+        }
+    }
 }
 
 uint8_t ActiveEntityState::RecalculateDemonStats(

@@ -472,6 +472,13 @@ public:
     virtual bool Ready(bool ignoreDisplayState = false);
 
     /**
+     * Check if the entity state has an entity set currently. Under normal
+     * circumstances, this will always be true for all but partner demons.
+     * @return true if an entity is set, otherwise false
+     */
+    virtual bool EntityIsSet() const;
+
+    /**
      * Check if the entity state is visible to any game client and should
      * be included when sending entity definitions or movement actions
      * @return true if the entity is visible, false if it is not
@@ -872,6 +879,17 @@ protected:
         std::list<std::shared_ptr<objects::MiCorrectTbl>>& adjustments);
 
     /**
+     * Apply a set of skill correct table value adjustments.
+     * @param skillIDs Set of skill IDs on the entity
+     * @param definitionManager Pointer to the DefinitionManager to use when
+     *  determining how the skills behave
+     * @param adjustments Output list parameter to add the adjustments to
+     */
+    void ApplySkillCorrectTbls(const std::set<uint32_t>& skillIDs,
+        libcomp::DefinitionManager* definitionManager,
+        std::list<std::shared_ptr<objects::MiCorrectTbl>>& adjustments);
+
+    /**
      * Recalculate a demon or enemy entity's stats.
      * @param definitionManager Pointer to the DefinitionManager to use when
      *  determining how effects and items interact with the entity
@@ -1088,6 +1106,11 @@ public:
         return mEntity != nullptr && (ignoreDisplayState ||
             (GetDisplayState() == ActiveDisplayState_t::ACTIVE &&
                 !GetIsHidden()));
+    }
+
+    virtual bool EntityIsSet() const
+    {
+        return mEntity != nullptr;
     }
 
     virtual bool IsClientVisible()
