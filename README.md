@@ -14,8 +14,8 @@
 ### Cerberus Rebirth Status ###
 | Type                                                                           | Rank            |
 | ------------------------------------------------------------------------------ | --------------- |
-| [Tiwaz](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-tiwaz)     | ■ □ □ □ □ □ □ □ |
-| [Peorth](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-peorth)   | □ □ □ □ □ □ □ □ |
+| [Tiwaz](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-tiwaz)     | ■ ■ ■ ■ ■ ■ ■ ■ |
+| [Peorth](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-peorth)   | ■ ■ □ □ □ □ □ □ |
 | [Eoh](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-eoh)         | □ □ □ □ □ □ □ □ |
 | [Eihwaz](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-eihwaz)   | □ □ □ □ □ □ □ □ |
 | [Uruz](https://github.com/comphack/comp_hack/wiki/Roadmap#cerberus-uruz)       | □ □ □ □ □ □ □ □ |
