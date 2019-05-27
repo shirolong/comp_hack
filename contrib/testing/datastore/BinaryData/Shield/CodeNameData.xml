@@ -1,0 +1,6 @@
+<objects>
+    <object name="MiTitleData">
+        <member name="ID">1</member>
+        <member name="title"><![CDATA[code name]]></member>
+    </object>
+</objects>
