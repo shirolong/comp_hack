@@ -18,11 +18,48 @@
 OPTION(USE_SYSTEM_OPENSSL "Build with the system OpenSSL library." OFF)
 
 IF(USE_SYSTEM_OPENSSL)
+    IF(WIN32)
+        SET(OPENSSL_USE_STATIC_LIBS TRUE)
+
+        IF(USE_STATIC_RUNTIME)
+            SET(OPENSSL_MSVC_STATIC_RT TRUE)
+        ENDIF(USE_STATIC_RUNTIME)
+    ENDIF(WIN32)
+
     FIND_PACKAGE(OpenSSL)
 ENDIF(USE_SYSTEM_OPENSSL)
 
+FUNCTION(FILTER_LINK_TYPE_KEYWORDS varname)
+    SET(last_type "general")
+    SET(out_libs "")
+
+    FOREACH(lib IN LISTS ${varname})
+        IF("${lib}" STREQUAL "general")
+            SET(last_type "${lib}")
+        ELSEIF("${lib}" STREQUAL "optimized")
+            SET(last_type "${lib}")
+        ELSEIF("${lib}" STREQUAL "debug")
+            SET(last_type "${lib}")
+        ELSEIF(NOT "${last_type}" STREQUAL "debug")
+            LIST(APPEND out_libs "${lib}")
+
+            # Reset the type for the next library
+            SET(last_type "general")
+        ELSE() # debug
+            # Reset the type for the next library
+            SET(last_type "general")
+        ENDIF()
+    ENDFOREACH()
+
+    SET(${varname} "${out_libs}" PARENT_SCOPE)
+ENDFUNCTION(FILTER_LINK_TYPE_KEYWORDS)
+
 IF(OPENSSL_FOUND)
     MESSAGE("-- Using system OpenSSL")
+
+    FILTER_LINK_TYPE_KEYWORDS(OPENSSL_LIBRARIES)
+    FILTER_LINK_TYPE_KEYWORDS(OPENSSL_SSL_LIBRARY)
+    FILTER_LINK_TYPE_KEYWORDS(OPENSSL_CRYPTO_LIBRARY)
 
     ADD_CUSTOM_TARGET(openssl)
 
