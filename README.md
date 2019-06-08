@@ -1,11 +1,10 @@
 # COMP\_hack #
 
 [![AGPL License](http://img.shields.io/badge/license-AGPL-brightgreen.svg)](https://opensource.org/licenses/AGPL-3.0)
-[![Latest Release](https://img.shields.io/github/downloads/comphack/comp_hack/v4.1.0-tiwaz/total.svg)](https://github.com/comphack/comp_hack/releases/tag/v4.1.0-tiwaz)
+[![Latest Release](https://img.shields.io/github/downloads/comphack/comp_hack/v4.2.1-peorth-hotfix1/total.svg)](https://github.com/comphack/comp_hack/releases/tag/v4.2.1-peorth-hotfix1)
 [![Discord Chat](https://img.shields.io/discord/322024695266541579.svg)](http://discord.gg/9jXeKcJ)
 
 [![Build Status](https://travis-ci.org/comphack/comp_hack.svg?branch=develop)](https://travis-ci.org/comphack/comp_hack)
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/comphack/comp_hack?branch=develop&svg=true)](https://ci.appveyor.com/project/compomega/comp-hack)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/9671/badge.svg)](https://scan.coverity.com/projects/comphack-comp_hack)
 [![Coverage Status](https://coveralls.io/repos/github/comphack/comp_hack/badge.svg?branch=develop)](https://coveralls.io/github/comphack/comp_hack?branch=develop)
 
