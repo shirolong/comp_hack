@@ -6,9 +6,9 @@
  *
  * @brief Main client source file.
  *
- * This file is part of the Client (client).
+ * This file is part of the COMP_hack Test Client (client).
  *
- * Copyright (C) 2012-2018 COMP_hack Team <compomega@tutanota.com>
+ * Copyright (C) 2012-2019 COMP_hack Team <compomega@tutanota.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -24,9 +24,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-// libtester Includes
-#include <ChannelClient.h>
-#include <LobbyClient.h>
+// Qt Includes
+#include <QApplication>
+
+// client Includes
+#include "GameWorker.h"
+
+// libclient Includes
+#include <LogicWorker.h>
+#include <MessageConnectionInfo.h>
 
 // libcomp Includes
 #include <Decrypt.h>
@@ -38,8 +44,8 @@
 #include <iostream>
 
 // Standard C Includes
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
 
 static bool gRunning = true;
 static int gReturnCode = EXIT_SUCCESS;
@@ -57,8 +63,7 @@ static void ScriptInclude(const char *szPath)
 
     if(file.empty())
     {
-        std::cerr << "Failed to include script file: "
-            << szPath << std::endl;
+        std::cerr << "Failed to include script file: " << szPath << std::endl;
 
         return;
     }
@@ -67,8 +72,7 @@ static void ScriptInclude(const char *szPath)
 
     if(!gEngine->Eval(&file[0], szPath))
     {
-        std::cerr << "Failed to run script file: "
-            << szPath << std::endl;
+        std::cerr << "Failed to run script file: " << szPath << std::endl;
     }
 }
 
@@ -87,16 +91,22 @@ int8_t SystemHour, SystemMin, Min, Hour, MoonPhase;
 size_t Hash()
 {
     // System time carries the most weight, then moon phase, then game time
-    return (size_t)((SystemHour < 0 || SystemMin < 0 ||
-        (((int)SystemHour * 100 + (int)SystemMin) > 2400)) ? 0ULL
-        : ((size_t)(10000 + (int)SystemHour * 100 + (int)SystemMin) * (size_t)100000000ULL)) +
-        (size_t)((MoonPhase < 0 || MoonPhase >= 16)
-            ? (size_t)0ULL : ((size_t)(100 + (int)MoonPhase) * (size_t)100000ULL)) +
-        (size_t)((Hour < 0 || Min < 0 || (((int)Hour * 100 + (int)Min) > 2400))
-            ? (size_t)0ULL : (size_t)(10000 + (int)Hour * 100 + (int)Min));
+    return (size_t)(
+               (SystemHour < 0 || SystemMin < 0 ||
+                   (((int)SystemHour * 100 + (int)SystemMin) > 2400)) ?
+                   0ULL :
+                   ((size_t)(10000 + (int)SystemHour * 100 + (int)SystemMin) *
+                       (size_t)100000000ULL)) +
+           (size_t)((MoonPhase < 0 || MoonPhase >= 16) ?
+                        (size_t)0ULL :
+                        ((size_t)(100 + (int)MoonPhase) * (size_t)100000ULL)) +
+           (size_t)(
+               (Hour < 0 || Min < 0 || (((int)Hour * 100 + (int)Min) > 2400)) ?
+                   (size_t)0ULL :
+                   (size_t)(10000 + (int)Hour * 100 + (int)Min));
 }
 
-void RunInteractive(libcomp::ScriptEngine& engine)
+void RunInteractive(libcomp::ScriptEngine &engine)
 {
     libcomp::String code, script;
 
@@ -144,6 +154,49 @@ void RunInteractive(libcomp::ScriptEngine& engine)
     std::cout << "Final script: " << std::endl << script.C();
 }
 
+int RunUI(int argc, char *argv[])
+{
+    QApplication app(argc, argv);
+
+    // These settings are used to specify how the settings are stored. On
+    // Windows, there settings are stored in the registry at
+    // HKEY_CURRENT_USER\Software\COMP_hack\COMP_hack Test Client
+    // On Linux, these settings will be stored in the file
+    // $HOME/.config/COMP_hack/COMP_hack Test Client.conf
+    // Consult the QSettings documentation in the Qt API reference for more
+    // information on how the settings work (and where they are on Mac OS X).
+    app.setOrganizationName("COMP_hack");
+    app.setOrganizationDomain("comp.hack");
+    app.setApplicationName("COMP_hack Test Client");
+
+    // Create the worker threads.
+    auto gameWorker = std::make_shared<game::GameWorker>();
+    auto logicWorker = std::make_shared<logic::LogicWorker>();
+
+    // Setup the message queues.
+    logicWorker->SetGameQueue(gameWorker->GetMessageQueue());
+    gameWorker->SetLogicQueue(logicWorker->GetMessageQueue());
+
+    // Start the worker threads.
+    logicWorker->Start("logic");
+    gameWorker->Start("game");
+
+    // Run the Qt event loop.
+    int result = app.exec();
+
+    // Shutdown all the threads.
+    gameWorker->Shutdown();
+    gameWorker->Join();
+
+    logicWorker->Shutdown();
+    logicWorker->Join();
+
+    gameWorker.reset();
+    logicWorker.reset();
+
+    return result;
+}
+
 int main(int argc, char *argv[])
 {
     (void)argc;
@@ -167,10 +220,26 @@ int main(int argc, char *argv[])
     gEngine = &engine;
 
     // Register the client testing classes.
-    engine.Using<libtester::LobbyClient>();
-    engine.Using<libtester::ChannelClient>();
+    /// @todo Add the logic worker here?
 
-    if(1 >= argc)
+    //////////////////////////////////////////////////////////////////////////
+    if(2 <= argc && std::string("--gui") == argv[1])
+    {
+        return RunUI(argc, argv);
+    }
+
+    logic::LogicWorker worker;
+    worker.Start("logic");
+
+    worker.GetMessageQueue()->Enqueue(new logic::MessageConnectToLobby(
+        "testbob", "password", 10666, "lobby@1"));
+
+    ScriptSleep(3);
+    worker.Shutdown();
+    worker.Join();
+    //////////////////////////////////////////////////////////////////////////
+
+    /*if(1 >= argc)
     {
         RunInteractive(engine);
     }
@@ -198,7 +267,7 @@ int main(int argc, char *argv[])
                 return EXIT_FAILURE;
             }
         }
-    }
+    }*/
 
     return gReturnCode;
 }
