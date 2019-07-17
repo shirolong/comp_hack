@@ -1,3 +1,20 @@
+DISCLAIMER: In addition to the disclaimers in our software license the
+following additional disclaimers apply:
+
+This software is not in alpha or beta. It is considered to be in it's 4th
+major release. This software is feature complete; however, we continue to
+improve the code, add/change/remove features and fix bugs.
+
+This software may contain new features or bugs that cause unintended or
+undesirable behavior. This may include, but not limited to, the ability to
+exploit a mechanic, crash the server or corrupt character data. Unintended
+or undesirable behavior may also occur when loading game content. It is
+the sole responsibility of you, the server administrator, to test and
+verify updates to the software and content before deploying to a production
+server for play by your users.
+
+
+
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
 
