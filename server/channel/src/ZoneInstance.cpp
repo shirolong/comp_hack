@@ -88,8 +88,11 @@ ZoneInstance::~ZoneInstance()
 {
     if(GetID() != 0)
     {
-        LOG_DEBUG(libcomp::String("Deleting zone instance: %1\n")
-            .Arg(GetID()));
+        LogZoneManagerDebug([&]()
+        {
+            return libcomp::String("Deleting zone instance: %1\n")
+                .Arg(GetID());
+        });
     }
 }
 

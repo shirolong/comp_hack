@@ -64,14 +64,20 @@ ErrorCodes_t AccountManager::WebAuthLogin(const libcomp::String& username,
 {
     /// @todo Check if the server is full and return SERVER_FULL.
 
-    /*LOG_DEBUG(libcomp::String("Attempting to perform a web auth login for "
-        "account '%1'.\n").Arg(username));*/
+    LogAccountManagerDebug([&]()
+    {
+        return libcomp::String("Attempting to perform a web auth login for "
+            "account '%1'.\n").Arg(username);
+    });
 
     // Trust nothing.
     if(!mServer)
     {
-        LOG_DEBUG(libcomp::String("Web auth login for account '%1' failed "
-            "with a system error.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Web auth login for account '%1' failed "
+                "with a system error.\n").Arg(username);
+        });
 
         return ErrorCodes_t::SYSTEM_ERROR;
     }
@@ -82,8 +88,11 @@ ErrorCodes_t AccountManager::WebAuthLogin(const libcomp::String& username,
 
     if(!config)
     {
-        LOG_DEBUG(libcomp::String("Web auth login for account '%1' failed "
-            "with a system error.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Web auth login for account '%1' failed "
+                "with a system error.\n").Arg(username);
+        });
 
         return ErrorCodes_t::SYSTEM_ERROR;
     }
@@ -95,12 +104,15 @@ ErrorCodes_t AccountManager::WebAuthLogin(const libcomp::String& username,
     // Check the client version first.
     if(requiredClientVersion != clientVersion)
     {
-        LOG_DEBUG(libcomp::String("Web auth login for account '%1' failed "
-            "with a wrong client version. Expected version %2.%3 but "
-            "got version %4.%5.\n").Arg(username).Arg(
-            requiredClientVersion / 1000).Arg(
-            requiredClientVersion % 1000).Arg(
-            clientVersion / 1000).Arg(clientVersion % 1000));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Web auth login for account '%1' failed "
+                "with a wrong client version. Expected version %2.%3 but "
+                "got version %4.%5.\n").Arg(username).Arg(
+                requiredClientVersion / 1000).Arg(
+                requiredClientVersion % 1000).Arg(
+                clientVersion / 1000).Arg(clientVersion % 1000);
+        });
 
         return ErrorCodes_t::WRONG_CLIENT_VERSION;
     }
@@ -114,8 +126,11 @@ ErrorCodes_t AccountManager::WebAuthLogin(const libcomp::String& username,
     // This should never happen.
     if(!login)
     {
-        LOG_DEBUG(libcomp::String("Web auth login for account '%1' failed "
-            "with a system error.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Web auth login for account '%1' failed "
+                "with a system error.\n").Arg(username);
+        });
 
         return ErrorCodes_t::SYSTEM_ERROR;
     }
@@ -126,8 +141,11 @@ ErrorCodes_t AccountManager::WebAuthLogin(const libcomp::String& username,
     // If the account was not loaded it's a bad username.
     if(!account)
     {
-        LOG_DEBUG(libcomp::String("Web auth login for account '%1' failed "
-            "with a bad username (no account data found).\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Web auth login for account '%1' failed "
+                "with a bad username (no account data found).\n").Arg(username);
+        });
 
         // Remove the entry to save memory (esp. if someone is being a dick).
         EraseLogin(username);
@@ -145,8 +163,11 @@ ErrorCodes_t AccountManager::WebAuthLogin(const libcomp::String& username,
         if(account->GetPassword() != libcomp::Crypto::HashPassword(password,
             account->GetSalt()))
         {
-            LOG_DEBUG(libcomp::String("Web auth login for account '%1' failed "
-                "with a bad password.\n").Arg(username));
+            LogAccountManagerDebug([&]()
+            {
+                return libcomp::String("Web auth login for account '%1' failed "
+                    "with a bad password.\n").Arg(username);
+            });
 
             // Only erase the login if it was offline. This should prevent
             // a malicious user from blocking/corrupting a legitimate login.
@@ -165,8 +186,11 @@ ErrorCodes_t AccountManager::WebAuthLogin(const libcomp::String& username,
     if(objects::AccountLogin::State_t::OFFLINE != state &&
         objects::AccountLogin::State_t::LOBBY_WAIT != state)
     {
-        LOG_DEBUG(libcomp::String("Web auth login for account '%1' failed "
-            "because it is already online.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Web auth login for account '%1' failed "
+                "because it is already online.\n").Arg(username);
+        });
 
         // Do not erase the login as it's not ours.
         return ErrorCodes_t::ACCOUNT_STILL_LOGGED_IN;
@@ -175,8 +199,11 @@ ErrorCodes_t AccountManager::WebAuthLogin(const libcomp::String& username,
     // Now that we know the account is not online check it is enabled.
     if(!account->GetEnabled())
     {
-        LOG_DEBUG(libcomp::String("Web auth login for account '%1' failed "
-            "due to being disabled/banned.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Web auth login for account '%1' failed "
+                "due to being disabled/banned.\n").Arg(username);
+        });
 
         // The hammer of justice is swift.
         EraseLogin(username);
@@ -197,8 +224,11 @@ ErrorCodes_t AccountManager::WebAuthLogin(const libcomp::String& username,
         ExpireSession(_username, _sid);
     }, username, sid);
 
-    /*LOG_DEBUG(libcomp::String("Web auth login for account '%1' has "
-            "now passed web authentication.\n").Arg(username));*/
+    LogAccountManagerDebug([&]()
+    {
+        return libcomp::String("Web auth login for account '%1' has "
+            "now passed web authentication.\n").Arg(username);
+    });
 
     return ErrorCodes_t::SUCCESS;
 }
@@ -213,8 +243,11 @@ ErrorCodes_t AccountManager::WebAuthLoginApi(const libcomp::String& username,
 ErrorCodes_t AccountManager::LobbyLogin(const libcomp::String& username,
     const libcomp::String& sid, libcomp::String& sid2)
 {
-    /*LOG_DEBUG(libcomp::String("Attempting to perform a login with SID for "
-        "account '%1'.\n").Arg(username));*/
+    LogAccountManagerDebug([&]()
+    {
+        return libcomp::String("Attempting to perform a login with SID for "
+            "account '%1'.\n").Arg(username);
+    });
 
     // Lock the accounts now so this is thread safe.
     std::lock_guard<std::mutex> lock(mAccountLock);
@@ -225,8 +258,11 @@ ErrorCodes_t AccountManager::LobbyLogin(const libcomp::String& username,
     // This should never happen.
     if(!login)
     {
-        LOG_DEBUG(libcomp::String("Login (via web auth) for account '%1' "
-            "failed with a system error.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Login (via web auth) for account '%1' "
+                "failed with a system error.\n").Arg(username);
+        });
 
         return ErrorCodes_t::SYSTEM_ERROR;
     }
@@ -234,11 +270,22 @@ ErrorCodes_t AccountManager::LobbyLogin(const libcomp::String& username,
     // The provided SID must match the one given by the server.
     if(sid != login->GetSessionID())
     {
-        LOG_DEBUG(libcomp::String("Login (via web auth) for account '%1' "
-            "failed because it did not provide a correct SID.\n").Arg(
-            username));
-        LOG_DEBUG(libcomp::String("Theirs: %1\n").Arg(sid));
-        LOG_DEBUG(libcomp::String("Ours:   %1\n").Arg(login->GetSessionID()));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Login (via web auth) for account '%1' "
+                "failed because it did not provide a correct SID.\n")
+                .Arg(username);
+        });
+
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Theirs: %1\n").Arg(sid);
+        });
+
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Ours:   %1\n").Arg(login->GetSessionID());
+        });
 
         return ErrorCodes_t::BAD_USERNAME_PASSWORD;
     }
@@ -246,8 +293,11 @@ ErrorCodes_t AccountManager::LobbyLogin(const libcomp::String& username,
     // For web authentication we must be in the lobby wait state.
     if(objects::AccountLogin::State_t::LOBBY_WAIT != login->GetState())
     {
-        LOG_DEBUG(libcomp::String("Login (via web auth) for account '%1' "
-            "failed because it did not request web auth.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Login (via web auth) for account '%1' "
+                "failed because it did not request web auth.\n").Arg(username);
+        });
 
         return ErrorCodes_t::ACCOUNT_STILL_LOGGED_IN;
     }
@@ -267,8 +317,11 @@ ErrorCodes_t AccountManager::LobbyLogin(const libcomp::String& username,
 
     // We assume here the login code has checked the client version and
     // password hash. We still check if the account can login though.
-    /*LOG_DEBUG(libcomp::String("Attempting to perform a classic login for "
-        "account '%1'.\n").Arg(username));*/
+    LogAccountManagerDebug([&]()
+    {
+        return libcomp::String("Attempting to perform a classic login for "
+            "account '%1'.\n").Arg(username);
+    });
 
     // Lock the accounts now so this is thread safe.
     std::lock_guard<std::mutex> lock(mAccountLock);
@@ -279,8 +332,11 @@ ErrorCodes_t AccountManager::LobbyLogin(const libcomp::String& username,
     // This should never happen.
     if(!login)
     {
-        LOG_DEBUG(libcomp::String("Login (via web auth) for account '%1' "
-            "failed with a system error.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Login (via web auth) for account '%1' "
+                "failed with a system error.\n").Arg(username);
+        });
 
         return ErrorCodes_t::SYSTEM_ERROR;
     }
@@ -291,8 +347,11 @@ ErrorCodes_t AccountManager::LobbyLogin(const libcomp::String& username,
     // If the account was not loaded it's a bad username.
     if(!account)
     {
-        LOG_DEBUG(libcomp::String("Classic login for account '%1' failed "
-            "with a bad username (no account data found).\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Classic login for account '%1' failed "
+                "with a bad username (no account data found).\n").Arg(username);
+        });
 
         // Remove the entry to save memory (esp. if someone is being a dick).
         EraseLogin(username);
@@ -307,8 +366,11 @@ ErrorCodes_t AccountManager::LobbyLogin(const libcomp::String& username,
     if(objects::AccountLogin::State_t::OFFLINE != state &&
         objects::AccountLogin::State_t::LOBBY_WAIT != state)
     {
-        LOG_DEBUG(libcomp::String("Classic login for account '%1' failed "
-            "because it is already online.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Classic login for account '%1' failed "
+                "because it is already online.\n").Arg(username);
+        });
 
         // Do not erase the login as it's not ours.
         return ErrorCodes_t::ACCOUNT_STILL_LOGGED_IN;
@@ -317,8 +379,11 @@ ErrorCodes_t AccountManager::LobbyLogin(const libcomp::String& username,
     // Now that we know the account is not online check it is enabled.
     if(!account->GetEnabled())
     {
-        LOG_DEBUG(libcomp::String("Classic login for account '%1' failed "
-            "due to being disabled/banned.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Classic login for account '%1' failed "
+                "due to being disabled/banned.\n").Arg(username);
+        });
 
         // The hammer of justice is swift.
         EraseLogin(username);
@@ -347,8 +412,11 @@ std::shared_ptr<objects::AccountLogin> AccountManager::StartChannelLogin(
     // This should never happen.
     if(!login)
     {
-        LOG_DEBUG(libcomp::String("Login to channel for account '%1' "
-            "failed with a system error.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Login to channel for account '%1' "
+                "failed with a system error.\n").Arg(username);
+        });
 
         return {};
     }
@@ -356,8 +424,11 @@ std::shared_ptr<objects::AccountLogin> AccountManager::StartChannelLogin(
     // Now check to see if the account is online.
     if(objects::AccountLogin::State_t::LOBBY != login->GetState())
     {
-        LOG_DEBUG(libcomp::String("Login to channel for account '%1' failed "
-            "because it is not in the lobby state.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Login to channel for account '%1' failed "
+                "because it is not in the lobby state.\n").Arg(username);
+        });
 
         return {};
     }
@@ -371,9 +442,12 @@ std::shared_ptr<objects::AccountLogin> AccountManager::StartChannelLogin(
 ErrorCodes_t AccountManager::SwitchToChannel(const libcomp::String& username,
     int8_t worldID, int8_t channelID)
 {
-    /*LOG_DEBUG(libcomp::String("Attempting to perform a login to channel %1 "
-        "on world %2 for account '%3'.\n").Arg(channelID).Arg(
-        worldID).Arg(username));*/
+    LogAccountManagerDebug([&]()
+    {
+        return libcomp::String("Attempting to perform a login to channel %1 "
+            "on world %2 for account '%3'.\n").Arg(channelID).Arg(
+            worldID).Arg(username);
+    });
 
     // Lock the accounts now so this is thread safe.
     std::lock_guard<std::mutex> lock(mAccountLock);
@@ -384,8 +458,11 @@ ErrorCodes_t AccountManager::SwitchToChannel(const libcomp::String& username,
     // This should never happen.
     if(!login)
     {
-        LOG_DEBUG(libcomp::String("Login to channel for account '%1' "
-            "failed with a system error.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Login to channel for account '%1' "
+                "failed with a system error.\n").Arg(username);
+        });
 
         return ErrorCodes_t::SYSTEM_ERROR;
     }
@@ -393,8 +470,11 @@ ErrorCodes_t AccountManager::SwitchToChannel(const libcomp::String& username,
     // Now check to see if the account is online.
     if(objects::AccountLogin::State_t::LOBBY != login->GetState())
     {
-        LOG_DEBUG(libcomp::String("Login to channel for account '%1' failed "
-            "because it is not in the lobby state.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Login to channel for account '%1' failed "
+                "because it is not in the lobby state.\n").Arg(username);
+        });
 
         return ErrorCodes_t::SYSTEM_ERROR;
     }
@@ -412,9 +492,12 @@ ErrorCodes_t AccountManager::SwitchToChannel(const libcomp::String& username,
 ErrorCodes_t AccountManager::CompleteChannelLogin(
     const libcomp::String& username, int8_t worldID, int8_t channelID)
 {
-    /*LOG_DEBUG(libcomp::String("Attempting to complete a login to channel %1 "
-        "on world %2 for account '%3'.\n").Arg(channelID).Arg(
-        worldID).Arg(username));*/
+    LogAccountManagerDebug([&]()
+    {
+        return libcomp::String("Attempting to complete a login to channel %1 "
+            "on world %2 for account '%3'.\n").Arg(channelID).Arg(
+            worldID).Arg(username);
+    });
 
     // Lock the accounts now so this is thread safe.
     std::lock_guard<std::mutex> lock(mAccountLock);
@@ -425,8 +508,11 @@ ErrorCodes_t AccountManager::CompleteChannelLogin(
     // This should never happen.
     if(!login)
     {
-        LOG_DEBUG(libcomp::String("Login to channel for account '%1' "
-            "failed with a system error.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Login to channel for account '%1' "
+                "failed with a system error.\n").Arg(username);
+        });
 
         return ErrorCodes_t::SYSTEM_ERROR;
     }
@@ -435,9 +521,12 @@ ErrorCodes_t AccountManager::CompleteChannelLogin(
     if(objects::AccountLogin::State_t::LOBBY_TO_CHANNEL != login->GetState() &&
         objects::AccountLogin::State_t::CHANNEL_TO_CHANNEL != login->GetState())
     {
-        LOG_DEBUG(libcomp::String("Login to channel for account '%1' failed "
-            "because it is not in the lobby to channel or channel to channel "
-            "state.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Login to channel for account '%1' failed "
+                "because it is not in the lobby to channel or channel to "
+                "channel state.\n").Arg(username);
+        });
 
         return ErrorCodes_t::SYSTEM_ERROR;
     }
@@ -448,9 +537,12 @@ ErrorCodes_t AccountManager::CompleteChannelLogin(
     if(cLogin->GetWorldID() != worldID ||
         cLogin->GetChannelID() != channelID)
     {
-        LOG_DEBUG(libcomp::String("Login to channel for account '%1' failed "
-            "because the completion is for a different world or channel.\n"
-            ).Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Login to channel for account '%1' failed "
+                "because the completion is for a different world or channel.\n"
+                ).Arg(username);
+        });
 
         return ErrorCodes_t::SYSTEM_ERROR;
     }
@@ -473,8 +565,11 @@ bool AccountManager::ChannelToChannelSwitch(const libcomp::String& username,
     // This should never happen.
     if(!login)
     {
-        LOG_DEBUG(libcomp::String("Channel to channel switch for account '%1' "
-            "failed with a system error.\n").Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Channel to channel switch for account "
+                "'%1' failed with a system error.\n").Arg(username);
+        });
 
         return false;
     }
@@ -483,9 +578,12 @@ bool AccountManager::ChannelToChannelSwitch(const libcomp::String& username,
 
     if(!cLogin || objects::AccountLogin::State_t::CHANNEL != login->GetState())
     {
-        LOG_DEBUG(libcomp::String("Channel to channel for account '%1' failed "
-            "because it is not in the channel state with a valid character.\n")
-            .Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Channel to channel for account '%1' failed "
+                "because it is not in the channel state with a valid "
+                "character.\n").Arg(username);
+        });
 
         return false;
     }
@@ -506,7 +604,10 @@ bool AccountManager::ChannelToChannelSwitch(const libcomp::String& username,
 
 bool AccountManager::Logout(const libcomp::String& username)
 {
-    LOG_DEBUG(libcomp::String("Logging out account '%1'.\n").Arg(username));
+    LogAccountManagerDebug([&]()
+    {
+        return libcomp::String("Logging out account '%1'.\n").Arg(username);
+    });
 
     auto config = std::dynamic_pointer_cast<objects::LobbyConfig>(
         mServer->GetConfig());
@@ -580,8 +681,11 @@ void AccountManager::ExpireSession(const libcomp::String& username,
         if(account && objects::AccountLogin::State_t::LOBBY_WAIT ==
             account->GetState() && sid == account->GetSessionID())
         {
-            LOG_DEBUG(libcomp::String("Session for username '%1' has "
-                "expired.\n").Arg(username));
+            LogAccountManagerDebug([&]()
+            {
+                return libcomp::String("Session for username '%1' has "
+                    "expired.\n").Arg(username);
+            });
 
             // It's still set to expire so do so.
             mAccountMap.erase(pair);
@@ -754,7 +858,8 @@ bool AccountManager::UpdateKillTime(const libcomp::String& username,
 
         if(!character->Update(worldDB))
         {
-            LOG_DEBUG("Character kill time failed to save.\n");
+            LogAccountManagerDebugMsg("Character kill time failed to save.\n");
+
             return false;
         }
 
@@ -777,8 +882,11 @@ bool AccountManager::DeleteKillTimeExceededCharacters(uint8_t worldID)
     auto mainDB = mServer->GetMainDatabase();
     auto worldDB = world->GetWorldDatabase();
 
-    LOG_DEBUG(libcomp::String("Loading kill time exceeded characters for"
-        " world server: (%1) %2\n").Arg(svr->GetID()).Arg(svr->GetName()));
+    LogAccountManagerDebug([&]()
+    {
+        return libcomp::String("Loading kill time exceeded characters for"
+            " world server: (%1) %2\n").Arg(svr->GetID()).Arg(svr->GetName());
+    });
 
     std::list<std::shared_ptr<objects::Character>> exceeded;
     for(auto character : libcomp::PersistentObject::LoadAll<
@@ -792,8 +900,11 @@ bool AccountManager::DeleteKillTimeExceededCharacters(uint8_t worldID)
 
     if(exceeded.size() > 0)
     {
-        LOG_DEBUG(libcomp::String("%1 character(s) found for deletion\n")
-            .Arg(exceeded.size()));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("%1 character(s) found for deletion\n")
+                .Arg(exceeded.size());
+        });
 
         while(exceeded.size() > 0)
         {
@@ -823,17 +934,20 @@ bool AccountManager::DeleteKillTimeExceededCharacters(uint8_t worldID)
             }
             else
             {
-                LOG_DEBUG(libcomp::String("Failed to load account %1"
-                    " associated to kill time exceeded character(s)\n")
-                    .Arg(accountUID.ToString()));
+                LogAccountManagerDebug([&]()
+                {
+                    return libcomp::String("Failed to load account %1"
+                        " associated to kill time exceeded character(s)\n")
+                        .Arg(accountUID.ToString());
+                });
             }
         }
 
-        LOG_DEBUG("Character deletions complete\n");
+        LogAccountManagerDebugMsg("Character deletions complete\n");
     }
     else
     {
-        LOG_DEBUG("No characters deletions required\n");
+        LogAccountManagerDebugMsg("No characters deletions required\n");
     }
 
     return true;
@@ -861,16 +975,24 @@ bool AccountManager::SetCharacterOnAccount(
 
     if(nextCID == MAX_CHARACTER)
     {
-        LOG_ERROR(libcomp::String("Character failed to be created on"
-            " account: %1\n").Arg(account->GetUUID().ToString()));
+        LogAccountManagerError([&]()
+        {
+            return libcomp::String("Character failed to be created on"
+                " account: %1\n").Arg(account->GetUUID().ToString());
+        });
+
         return false;
     }
 
     if(!account->SetCharacters(nextCID, character) ||
         !account->Update(mServer->GetMainDatabase()))
     {
-        LOG_ERROR(libcomp::String("Account character array failed to save"
-            " for account %1\n").Arg(account->GetUUID().ToString()));
+        LogAccountManagerError([&]()
+        {
+            return libcomp::String("Account character array failed to save"
+                " for account %1\n").Arg(account->GetUUID().ToString());
+        });
+
         return false;
     }
 
@@ -920,9 +1042,13 @@ bool AccountManager::DeleteCharacter(
 
     if(cid == MAX_CHARACTER)
     {
-        LOG_ERROR(libcomp::String("Attempted to delete a character"
-            " no longer associated to its parent account: %1\n").Arg(
-            character->GetUUID().ToString()));
+        LogAccountManagerError([&]()
+        {
+            return libcomp::String("Attempted to delete a character"
+                " no longer associated to its parent account: %1\n").Arg(
+                character->GetUUID().ToString());
+        });
+
         return false;
     }
 
@@ -960,8 +1086,12 @@ bool AccountManager::DeleteCharacter(
 
     if(!account->Update(mServer->GetMainDatabase()))
     {
-        LOG_ERROR(libcomp::String("Account failed to update after character"
-            " deletion: %1\n").Arg(character->GetUUID().ToString()));
+        LogAccountManagerError([&]()
+        {
+            return libcomp::String("Account failed to update after character"
+                " deletion: %1\n").Arg(character->GetUUID().ToString());
+        });
+
         return false;
     }
 
@@ -993,8 +1123,11 @@ bool AccountManager::StartWebGameSession(const libcomp::String& username,
     }
 
     // Session is valid, register it
-    LOG_DEBUG(libcomp::String("Web-game session started for account: %1\n")
-        .Arg(username));
+    LogAccountManagerDebug([&]()
+    {
+        return libcomp::String("Web-game session started for account: %1\n")
+            .Arg(username);
+    });
 
     mWebGameSessions[lookup] = gameSession;
 
@@ -1021,8 +1154,12 @@ std::shared_ptr<WebGameApiSession> AccountManager::GetWebGameApiSession(
             {
                 if(it2->second->clientAddress != clientAddress)
                 {
-                    LOG_ERROR(libcomp::String("Second web-game session"
-                        " attempted for account: %1\n").Arg(username));
+                    LogAccountManagerError([&]()
+                    {
+                        return libcomp::String("Second web-game session"
+                            " attempted for account: %1\n").Arg(username);
+                    });
+
                     return nullptr;
                 }
 
@@ -1041,8 +1178,11 @@ std::shared_ptr<WebGameApiSession> AccountManager::GetWebGameApiSession(
     }
     else
     {
-        LOG_ERROR(libcomp::String("Web-game API session requested from account"
-            " with no active web-game session: %1\n").Arg(username));
+        LogAccountManagerError([&]()
+        {
+            return libcomp::String("Web-game API session requested from account"
+                " with no active web-game session: %1\n").Arg(username);
+        });
     }
 
     return nullptr;
@@ -1057,8 +1197,11 @@ bool AccountManager::EndWebGameSession(const libcomp::String& username)
     auto sessionPair = mWebGameSessions.find(lookup);
     if(sessionPair != mWebGameSessions.end())
     {
-        LOG_DEBUG(libcomp::String("Web-game session ended for account: %1\n")
-            .Arg(username));
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Web-game session ended for account: %1\n")
+                .Arg(username);
+        });
 
         mWebGameSessions.erase(lookup);
         mWebGameAPISessions.erase(lookup);
@@ -1070,7 +1213,7 @@ bool AccountManager::EndWebGameSession(const libcomp::String& username)
 
 void AccountManager::PrintAccounts() const
 {
-    LOG_DEBUG("----------------------------------------\n");
+    LogAccountManagerDebugMsg("----------------------------------------\n");
 
     for(auto a : mAccountMap)
     {
@@ -1106,11 +1249,29 @@ void AccountManager::PrintAccounts() const
                 break;
         }
 
-        LOG_DEBUG(libcomp::String("Account:     %1\n").Arg(a.first));
-        LOG_DEBUG(libcomp::String("State:       %1\n").Arg(state));
-        LOG_DEBUG(libcomp::String("Session ID:  %1\n").Arg(login->GetSessionID()));
-        LOG_DEBUG(libcomp::String("Session Key: %1\n").Arg(login->GetSessionKey()));
-        LOG_DEBUG("----------------------------------------\n");
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Account:     %1\n").Arg(a.first);
+        });
+
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("State:       %1\n").Arg(state);
+        });
+
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Session ID:  %1\n")
+                .Arg(login->GetSessionID());
+        });
+
+        LogAccountManagerDebug([&]()
+        {
+            return libcomp::String("Session Key: %1\n")
+                .Arg(login->GetSessionKey());
+        });
+
+        LogAccountManagerDebugMsg("----------------------------------------\n");
     }
 }
 

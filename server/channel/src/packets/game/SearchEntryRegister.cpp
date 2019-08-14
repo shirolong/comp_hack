@@ -58,7 +58,7 @@ bool Parsers::SearchEntryRegister::Parse(libcomp::ManagerPacket *pPacketManager,
     auto syncManager = server->GetChannelSyncManager();
 
     int32_t type = p.ReadS32Little();
-    
+
     // Find any existing conflicting records (skip check if odd type signifying
     // an application as well as buying/selling which can have multiple)
     std::shared_ptr<objects::SearchEntry> existing;
@@ -103,8 +103,13 @@ bool Parsers::SearchEntryRegister::Parse(libcomp::ManagerPacket *pPacketManager,
     {
         if(existing->GetType() != entry->GetType())
         {
-            LOG_ERROR(libcomp::String("SearchEntryRegister request encountered"
-                " while conflicting entry of a different type exists: %1\n").Arg(type));
+            LogGeneralError([&]()
+            {
+                return libcomp::String("SearchEntryRegister request "
+                    "encountered while conflicting entry of a different "
+                    "type exists: %1\n").Arg(type);
+            });
+
             success = false;
         }
         else
@@ -213,8 +218,10 @@ bool Parsers::SearchEntryRegister::Parse(libcomp::ManagerPacket *pPacketManager,
 
                 if(!clan)
                 {
-                    LOG_ERROR("SearchEntryRegister request encountered"
-                        " for clan recruitment when the requestor is not in a clan\n");
+                    LogGeneralErrorMsg("SearchEntryRegister request encountered"
+                        " for clan recruitment when the requestor is not "
+                        "in a clan\n");
+
                     break;
                 }
 
@@ -232,7 +239,7 @@ bool Parsers::SearchEntryRegister::Parse(libcomp::ManagerPacket *pPacketManager,
                 libcomp::String comment = p.ReadString16Little(
                     libcomp::Convert::Encoding_t::ENCODING_CP932, true);
                 int8_t preferredDemonRace = p.ReadS8();
-            
+
                 if(p.Left() < (uint32_t)(3 + p.PeekU16Little()))
                 {
                     break;
@@ -394,7 +401,7 @@ bool Parsers::SearchEntryRegister::Parse(libcomp::ManagerPacket *pPacketManager,
                     libcomp::Convert::Encoding_t::ENCODING_CP932, true);
 
                 int32_t parentID = p.ReadS32Little();
-                
+
                 // Make sure a reply to the same parent does not exist
                 for(auto entry2 : syncManager->GetSearchEntries(
                     (objects::SearchEntry::Type_t)(type)))
@@ -409,8 +416,9 @@ bool Parsers::SearchEntryRegister::Parse(libcomp::ManagerPacket *pPacketManager,
 
                 if(existing)
                 {
-                    LOG_ERROR("SearchEntryRegister request encountered"
+                    LogGeneralErrorMsg("SearchEntryRegister request encountered"
                         " for application with duplicate parent ID\n");
+
                     break;
                 }
 
@@ -436,14 +444,15 @@ bool Parsers::SearchEntryRegister::Parse(libcomp::ManagerPacket *pPacketManager,
                 }
                 else
                 {
-                    LOG_ERROR("SearchEntryRegister request encountered"
+                    LogGeneralErrorMsg("SearchEntryRegister request encountered"
                         " for an application to an invalid parent ID\n");
                 }
             }
             break;
         default:
-            LOG_ERROR(libcomp::String("Invalid SearchEntryRegister type"
-                " encountered: %1\n").Arg(type));
+            LogGeneralErrorMsg(libcomp::String("Invalid SearchEntryRegister "
+                "type encountered: %1\n").Arg(type));
+
             break;
         }
     }
@@ -454,8 +463,8 @@ bool Parsers::SearchEntryRegister::Parse(libcomp::ManagerPacket *pPacketManager,
     }
     else
     {
-        LOG_ERROR(libcomp::String("Invalid SearchEntryRegister request"
-            " encountered: %1\n").Arg(type));
+        LogGeneralErrorMsg(libcomp::String("Invalid SearchEntryRegister "
+            "request encountered: %1\n").Arg(type));
     }
 
     if(!success)

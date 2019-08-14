@@ -214,10 +214,13 @@ void ActionManager::PerformActions(
             if(action->GetSourceContext() !=
                 objects::Action::SourceContext_t::SOURCE)
             {
-                LOG_ERROR(libcomp::String("Non-source context encountered"
-                    " for action set that resulted in a channel change: %1\n")
-                    .Arg(ctx.Client->GetClientState()
-                        ->GetAccountUID().ToString()));
+                LogActionManagerError([&]()
+                {
+                    return libcomp::String("Non-source context encountered for "
+                        "action set that resulted in a channel change: %1\n")
+                        .Arg(ctx.Client->GetClientState()
+                            ->GetAccountUID().ToString());
+                });
             }
 
             continue;
@@ -229,8 +232,12 @@ void ActionManager::PerformActions(
 
         if(mActionHandlers.end() == it)
         {
-            LOG_ERROR(libcomp::String("Failed to parse action of type %1\n"
-                ).Arg(to_underlying(action->GetActionType())));
+            LogActionManagerError([&]()
+            {
+                return libcomp::String("Failed to parse action of type %1\n")
+                    .Arg(to_underlying(action->GetActionType()));
+            });
+
             continue;
         }
         else
@@ -418,9 +425,12 @@ void ActionManager::PerformActions(
                 }
                 else
                 {
-                    LOG_DEBUG(libcomp::String("Quitting mid-action execution"
-                        " following the result of action type: %1.\n")
-                        .Arg((int32_t)action->GetActionType()));
+                    LogActionManagerDebug([&]()
+                    {
+                        return libcomp::String("Quitting mid-action execution"
+                            " following the result of action type: %1.\n")
+                            .Arg((int32_t)action->GetActionType());
+                    });
                 }
 
                 break;
@@ -665,7 +675,7 @@ bool ActionManager::StartEvent(ActionContext& ctx)
 
     eventManager->HandleEvent(ctx.Client, act->GetEventID(),
         ctx.SourceEntityID, ctx.CurrentZone, options);
-    
+
     return true;
 }
 
@@ -718,8 +728,9 @@ bool ActionManager::ZoneChange(ActionContext& ctx)
 
             if(!zoneID)
             {
-                LOG_ERROR("Attempted to move to the homepoint but no"
-                    " homepoint is set\n");
+                LogActionManagerErrorMsg("Attempted to move to the homepoint "
+                    "but no homepoint is set\n");
+
                 return false;
             }
         }
@@ -779,8 +790,13 @@ bool ActionManager::ZoneChange(ActionContext& ctx)
         }
         else
         {
-            LOG_ERROR(libcomp::String("Invalid zone requested for spot ID"
-                " move %1 (%2), #3.\n").Arg(zoneID).Arg(dynamicMapID).Arg(spotID));
+            LogActionManagerError([&]()
+            {
+                return libcomp::String("Invalid zone requested for spot ID"
+                    " move %1 (%2), #3.\n").Arg(zoneID).Arg(dynamicMapID)
+                    .Arg(spotID);
+            });
+
             return false;
         }
     }
@@ -812,8 +828,12 @@ bool ActionManager::ZoneChange(ActionContext& ctx)
     if(!zoneManager->EnterZone(ctx.Client, zoneID, dynamicMapID,
         x, y, rotation, true))
     {
-        LOG_ERROR(libcomp::String("Failed to add client to zone"
-            " %1 (%2).\n").Arg(zoneID).Arg(dynamicMapID));
+        LogActionManagerError([&]()
+        {
+            return libcomp::String("Failed to add client to zone"
+                " %1 (%2).\n").Arg(zoneID).Arg(dynamicMapID);
+        });
+
         return false;
     }
 
@@ -832,7 +852,7 @@ bool ActionManager::SetHomepoint(ActionContext& ctx)
     {
         return false;
     }
-    
+
     auto state = ctx.Client->GetClientState();
     auto cState = state->GetCharacterState();
     auto character = cState->GetEntity();
@@ -843,8 +863,9 @@ bool ActionManager::SetHomepoint(ActionContext& ctx)
     auto zoneDef = mServer.lock()->GetServerDataManager()->GetZoneData(zoneID, 0);
     if(zoneID == 0 || !zoneDef)
     {
-        LOG_ERROR("Attempted to execute a set homepoint action with an"
-            " invalid zone ID specified\n");
+        LogActionManagerErrorMsg("Attempted to execute a set homepoint action "
+            "with an invalid zone ID specified\n");
+
         return false;
     }
 
@@ -854,8 +875,9 @@ bool ActionManager::SetHomepoint(ActionContext& ctx)
     if(!mServer.lock()->GetZoneManager()->GetSpotPosition(zoneDef->GetDynamicMapID(),
         spotID, xCoord, yCoord, rot))
     {
-        LOG_ERROR("Attempted to execute a set homepoint action with an"
-            " invalid spot ID specified\n");
+        LogActionManagerErrorMsg("Attempted to execute a set homepoint action "
+            "with an invalid spot ID specified\n");
+
         return false;
     }
 
@@ -911,7 +933,9 @@ bool ActionManager::AddRemoveItems(ActionContext& ctx)
         // drops that can pull from the set, removes are not valid
         if(removes.size() > 0)
         {
-            LOG_ERROR("Attempted to remove items via drop set based action\n");
+            LogActionManagerErrorMsg(
+                "Attempted to remove items via drop set based action\n");
+
             return false;
         }
 
@@ -969,9 +993,13 @@ bool ActionManager::AddRemoveItems(ActionContext& ctx)
                     : nullptr;
                 if(!progress || progress->GetTimeTrialID() <= 0)
                 {
-                    LOG_ERROR(libcomp::String("Attempted to grant time trial"
-                        " rewards when no complete time trial exists: %1\n")
-                        .Arg(state->GetAccountUID().ToString()));
+                    LogActionManagerError([&]()
+                    {
+                        return libcomp::String("Attempted to grant time trial"
+                            " rewards when no complete time trial exists: %1\n")
+                            .Arg(state->GetAccountUID().ToString());
+                    });
+
                     return false;
                 }
             }
@@ -1024,9 +1052,13 @@ bool ActionManager::AddRemoveItems(ActionContext& ctx)
                     if(!categoryData || categoryData->GetMainCategory() != 1 ||
                         categoryData->GetSubCategory() != 64)
                     {
-                        LOG_ERROR(libcomp::String("Attempted to add or remove"
-                            " non-material item in the material tank: %1\n")
-                            .Arg(pair.first));
+                        LogActionManagerError([&]()
+                        {
+                            return libcomp::String("Attempted to add or remove"
+                                " non-material item in the material tank: %1\n")
+                                .Arg(pair.first);
+                        });
+
                         return false;
                     }
                 }
@@ -1101,8 +1133,9 @@ bool ActionManager::AddRemoveItems(ActionContext& ctx)
     case objects::ActionAddRemoveItems::Mode_t::POST:
         if(removes.size() > 0)
         {
-            LOG_ERROR("Attempted to remove one or more items"
+            LogActionManagerErrorMsg("Attempted to remove one or more items"
                 " from a post which is not allowed.\n");
+
             return false;
         }
         else
@@ -1113,8 +1146,12 @@ bool ActionManager::AddRemoveItems(ActionContext& ctx)
                 auto product = definitionManager->GetShopProductData(pair.first);
                 if(!product)
                 {
-                    LOG_ERROR(libcomp::String("Attempted to add an invalid"
-                        " product to a post: %1\n").Arg(pair.first));
+                    LogActionManagerError([&]()
+                    {
+                        return libcomp::String("Attempted to add an invalid"
+                            " product to a post: %1\n").Arg(pair.first);
+                    });
+
                     return false;
                 }
             }
@@ -1148,8 +1185,9 @@ bool ActionManager::AddRemoveItems(ActionContext& ctx)
 
             if(!lobbyDB->ProcessChangeSet(dbChanges))
             {
-                LOG_ERROR("Attempted to remove one or more items"
+                LogActionManagerErrorMsg("Attempted to remove one or more items"
                     " from a post which is not allowed.\n");
+
                 return false;
             }
         }
@@ -1455,8 +1493,9 @@ bool ActionManager::UpdateCOMP(ActionContext& ctx)
             {
                 if(d->GetLocked())
                 {
-                    LOG_ERROR("Attempted to remove partner demon that"
-                        " is locked\n");
+                    LogActionManagerErrorMsg("Attempted to remove partner "
+                        "demon that is locked\n");
+
                     return false;
                 }
                 else
@@ -1466,8 +1505,9 @@ bool ActionManager::UpdateCOMP(ActionContext& ctx)
             }
             else
             {
-                LOG_ERROR("Attempted to remove partner demon but no"
-                    " demon was summoned for COMP removal request\n");
+                LogActionManagerErrorMsg("Attempted to remove partner demon "
+                    "but no demon was summoned for COMP removal request\n");
+
                 return false;
             }
         }
@@ -1487,8 +1527,10 @@ bool ActionManager::UpdateCOMP(ActionContext& ctx)
                         // Special case, must be summoned demon
                         if(remove.find(0) != remove.end())
                         {
-                            LOG_ERROR("Attempted to remove partner demon twice"
-                                " for COMP removal request\n");
+                            LogActionManagerErrorMsg("Attempted to remove "
+                                "partner demon twice for COMP removal "
+                                "request\n");
+
                             return false;
                         }
                         else if(dState->GetEntity() == slot.Get())
@@ -1497,8 +1539,10 @@ bool ActionManager::UpdateCOMP(ActionContext& ctx)
                         }
                         else
                         {
-                            LOG_ERROR("Attempted to remove specific partner demon that"
-                                " was not summoned for COMP removal request\n");
+                            LogActionManagerErrorMsg("Attempted to remove "
+                                "specific partner demon that was not summoned "
+                                "for COMP removal request\n");
+
                             return false;
                         }
                     }
@@ -1515,8 +1559,9 @@ bool ActionManager::UpdateCOMP(ActionContext& ctx)
             if((pair.second == 0 && remove[pair.first].size() != 1) ||
                 (pair.second != 0 && (uint8_t)remove[pair.first].size() < pair.second))
             {
-                LOG_ERROR("One or more demons does not exist or is locked"
-                    " for COMP removal request\n");
+                LogActionManagerErrorMsg("One or more demons does not exist or "
+                    "is locked for COMP removal request\n");
+
                 return false;
             }
             else
@@ -1536,14 +1581,20 @@ bool ActionManager::UpdateCOMP(ActionContext& ctx)
             auto demonData = definitionManager->GetDevilData(pair.first);
             if(demonData == nullptr)
             {
-                LOG_ERROR(libcomp::String("Invalid demon ID encountered: %1\n")
-                    .Arg(pair.first));
+                LogActionManagerError([&]()
+                {
+                    return libcomp::String("Invalid demon ID encountered: %1\n")
+                        .Arg(pair.first);
+                });
+
                 return false;
             }
 
             if(freeCount < pair.second)
             {
-                LOG_ERROR("Not enough slots free for COMP add request\n");
+                LogActionManagerErrorMsg("Not enough slots free for COMP "
+                    "add request\n");
+
                 return false;
             }
 
@@ -1559,7 +1610,8 @@ bool ActionManager::UpdateCOMP(ActionContext& ctx)
         progress->SetMaxCOMPSlots(maxSlots);
         if(!progress->Update(server->GetWorldDatabase()))
         {
-            LOG_ERROR("Failed to increase COMP size\n");
+            LogActionManagerErrorMsg("Failed to increase COMP size\n");
+
             return false;
         }
 
@@ -1606,8 +1658,9 @@ bool ActionManager::UpdateCOMP(ActionContext& ctx)
                 if(!characterManager->ContractDemon(ctx.Client, pair.first, 0))
                 {
                     // Not really a good way to recover from this
-                    LOG_ERROR("Failed to contract one or more demons for"
-                        " COMP add request\n");
+                    LogActionManagerErrorMsg("Failed to contract one or more "
+                        "demons for COMP add request\n");
+
                     return false;
                 }
             }
@@ -1740,19 +1793,25 @@ bool ActionManager::GrantSkills(ActionContext& ctx)
         eState = state->GetDemonState();
         if(act->GetSkillPoints() > 0)
         {
-            LOG_ERROR("Attempted to grant skill points to a partner demon\n");
+            LogActionManagerErrorMsg("Attempted to grant skill points to a "
+                "partner demon\n");
+
             return false;
         }
 
         if(act->ExpertisePointsCount() > 0)
         {
-            LOG_ERROR("Attempted to grant expertise points to a partner demon\n");
+            LogActionManagerErrorMsg("Attempted to grant expertise points to a "
+                "partner demon\n");
+
             return false;
         }
 
         if(act->GetExpertiseMax() > 0)
         {
-            LOG_ERROR("Attempted to extend max expertise for a partner demon\n");
+            LogActionManagerErrorMsg("Attempted to extend max expertise for a "
+                "partner demon\n");
+
             return false;
         }
         break;
@@ -1862,7 +1921,7 @@ bool ActionManager::PlaySoundEffect(ActionContext& ctx)
     {
         return false;
     }
-    
+
     libcomp::Packet p;
     p.WritePacketCode(ChannelToClientPacketCode_t::PACKET_EVENT_PLAY_SOUND_EFFECT);
     p.WriteS32Little(act->GetSoundID());
@@ -1882,8 +1941,9 @@ bool ActionManager::SetNPCState(ActionContext& ctx)
     }
     else if(!ctx.Client && act->GetSourceClientOnly())
     {
-        LOG_ERROR("Source client NPC state change requested but no"
-            " source client exists in the current context!\n");
+        LogActionManagerErrorMsg("Source client NPC state change requested but "
+            "no source client exists in the current context!\n");
+
         return false;
     }
 
@@ -1902,8 +1962,12 @@ bool ActionManager::SetNPCState(ActionContext& ctx)
 
     if(!oNPCState)
     {
-        LOG_ERROR(libcomp::String("SetNPCState attempted on invalid target: %1\n")
-            .Arg(act->GetActorID()));
+        LogActionManagerError([&]()
+        {
+            return libcomp::String("SetNPCState attempted on invalid "
+                "target: %1\n").Arg(act->GetActorID());
+        });
+
         return false;
     }
 
@@ -2013,8 +2077,11 @@ bool ActionManager::UpdateFlag(ActionContext& ctx)
     case objects::ActionUpdateFlag::FlagType_t::PLUGIN:
         if(act->GetRemove())
         {
-            LOG_ERROR(libcomp::String("UpdateFlag attempted to remove a"
-                " plugin: %1\n").Arg(act->GetID()));
+            LogActionManagerError([&]()
+            {
+                return libcomp::String("UpdateFlag attempted to remove a"
+                    " plugin: %1\n").Arg(act->GetID());
+            });
             return false;
         }
         else
@@ -2029,8 +2096,12 @@ bool ActionManager::UpdateFlag(ActionContext& ctx)
     case objects::ActionUpdateFlag::FlagType_t::TIME_TRIAL:
         if(act->GetRemove())
         {
-            LOG_ERROR(libcomp::String("UpdateFlag attempted to remove a"
-                " time trial record: %1\n").Arg(act->GetID()));
+            LogActionManagerError([&]()
+            {
+                return libcomp::String("UpdateFlag attempted to remove a"
+                    " time trial record: %1\n").Arg(act->GetID());
+            });
+
             return false;
         }
         else
@@ -2041,8 +2112,12 @@ bool ActionManager::UpdateFlag(ActionContext& ctx)
     case objects::ActionUpdateFlag::FlagType_t::TITLE:
         if(act->GetRemove())
         {
-            LOG_ERROR(libcomp::String("UpdateFlag attempted to remove a"
-                " title: %1\n").Arg(act->GetID()));
+            LogActionManagerError([&]()
+            {
+                return libcomp::String("UpdateFlag attempted to remove a"
+                    " title: %1\n").Arg(act->GetID());
+            });
+
             return false;
         }
         else
@@ -2095,7 +2170,8 @@ bool ActionManager::UpdatePoints(ActionContext& ctx)
     if(!ctx.Client && act->GetPointType() !=
         objects::ActionUpdatePoints::PointType_t::KILL_VALUE)
     {
-        LOG_ERROR("Attempted to set non-player entity points\n");
+        LogActionManagerErrorMsg("Attempted to set non-player entity points\n");
+
         return false;
     }
 
@@ -2104,8 +2180,9 @@ bool ActionManager::UpdatePoints(ActionContext& ctx)
     case objects::ActionUpdatePoints::PointType_t::CP:
         if(act->GetIsSet() || act->GetValue() < 0)
         {
-            LOG_ERROR("Attempts to explicitly set or decrease the player's CP"
-                " are not allowed!\n");
+            LogActionManagerErrorMsg("Attempts to explicitly set or decrease "
+                "the player's CP are not allowed!\n");
+
             return false;
         }
         else
@@ -2114,7 +2191,7 @@ bool ActionManager::UpdatePoints(ActionContext& ctx)
 
             auto account = ctx.Client->GetClientState()
                 ->GetAccountLogin()->GetAccount().Get();
-            
+
             auto accountManager = server->GetAccountManager();
             if(accountManager->IncreaseCP(account, act->GetValue()))
             {
@@ -2220,7 +2297,9 @@ bool ActionManager::UpdatePoints(ActionContext& ctx)
         }
         else
         {
-            LOG_ERROR("Invalid I-Time ID specified for UpdatePoints action\n");
+            LogActionManagerErrorMsg("Invalid I-Time ID specified for "
+                "UpdatePoints action\n");
+
             return false;
         }
         break;
@@ -2416,8 +2495,9 @@ bool ActionManager::UpdatePoints(ActionContext& ctx)
     case objects::ActionUpdatePoints::PointType_t::REUNION_POINTS:
         if(act->GetIsSet() || act->GetValue() < 0)
         {
-            LOG_ERROR("Attempts to explicitly set or decrease reunion points"
-                " are not allowed!\n");
+            LogActionManagerErrorMsg("Attempts to explicitly set or decrease "
+                "reunion points are not allowed!\n");
+
             return false;
         }
         else
@@ -2523,8 +2603,9 @@ bool ActionManager::UpdateZoneFlags(ActionContext& ctx)
         }
         else
         {
-            LOG_ERROR("Attempted to update a zone character flag with"
-                " no associated client!\n");
+            LogActionManagerErrorMsg("Attempted to update a zone character "
+                "flag with no associated client!\n");
+
             return false;
         }
         break;
@@ -2743,8 +2824,9 @@ bool ActionManager::UpdateZoneInstance(ActionContext& ctx)
     case objects::ActionZoneInstance::Mode_t::CLAN_JOIN:
         if(!ctx.Client)
         {
-            LOG_ERROR("Attempted to create an instance with no client"
-                " context\n");
+            LogActionManagerErrorMsg("Attempted to create an instance with no "
+                "client context\n");
+
             return false;
         }
         else
@@ -2754,8 +2836,12 @@ bool ActionManager::UpdateZoneInstance(ActionContext& ctx)
                 act->GetInstanceID());
             if(!instDef)
             {
-                LOG_ERROR(libcomp::String("Invalid zone instance ID could not"
-                    " be created: %1\n").Arg(act->GetInstanceID()));
+                LogActionManagerError([&]()
+                {
+                    return libcomp::String("Invalid zone instance ID could not"
+                        " be created: %1\n").Arg(act->GetInstanceID());
+                });
+
                 return false;
             }
 
@@ -2900,8 +2986,9 @@ bool ActionManager::UpdateZoneInstance(ActionContext& ctx)
     case objects::ActionZoneInstance::Mode_t::JOIN:
         if(!ctx.Client)
         {
-            LOG_ERROR("Attempted to join an instance with no client"
-                " context\n");
+            LogActionManagerErrorMsg("Attempted to join an instance with no "
+                "client context\n");
+
             return false;
         }
         else
@@ -2935,8 +3022,9 @@ bool ActionManager::UpdateZoneInstance(ActionContext& ctx)
                 {
                 case InstanceType_t::TIME_TRIAL:
                 case InstanceType_t::DEMON_ONLY:
-                    LOG_ERROR("Attempted to start a non-default timer on"
-                        " an implicit timer instance type.\n");
+                    LogActionManagerErrorMsg("Attempted to start a non-default "
+                        "timer on an implicit timer instance type.\n");
+
                     return false;
                 default:
                     break;
@@ -2946,9 +3034,13 @@ bool ActionManager::UpdateZoneInstance(ActionContext& ctx)
                 if(instance->GetTimerStart() && !instance->GetTimerStop() &&
                     !zoneManager->StopInstanceTimer(instance))
                 {
-                    LOG_ERROR(libcomp::String("Attempted to start an instance"
-                        " timer but the previous timer could not be stopped"
-                        " first for instance %1\n").Arg(instance->GetID()));
+                    LogActionManagerError([&]()
+                    {
+                        return libcomp::String("Attempted to start an instance"
+                            " timer but the previous timer could not be stopped"
+                            " first for instance %1\n").Arg(instance->GetID());
+                    });
+
                     return false;
                 }
 
@@ -2967,8 +3059,12 @@ bool ActionManager::UpdateZoneInstance(ActionContext& ctx)
                 }
                 else
                 {
-                    LOG_ERROR(libcomp::String("Attempted to start an invalid"
-                        " instance timer: %1\n").Arg(timerID));
+                    LogActionManagerError([&]()
+                    {
+                        return libcomp::String("Attempted to start an invalid"
+                            " instance timer: %1\n").Arg(timerID);
+                    });
+
                     return false;
                 }
             }
@@ -2993,9 +3089,13 @@ bool ActionManager::UpdateZoneInstance(ActionContext& ctx)
                 auto timeLimitData = instance->GetTimeLimitData();
                 if(!timeLimitData || timeLimitData->GetID() != timerID)
                 {
-                    LOG_ERROR(libcomp::String("Attempted to stop an"
-                        " instance timer that did not match the supplied"
-                        " timer ID: %1\n").Arg(timerID));
+                    LogActionManagerError([&]()
+                    {
+                        return libcomp::String("Attempted to stop an"
+                            " instance timer that did not match the supplied"
+                            " timer ID: %1\n").Arg(timerID);
+                    });
+
                     return false;
                 }
             }
@@ -3006,8 +3106,9 @@ bool ActionManager::UpdateZoneInstance(ActionContext& ctx)
     case objects::ActionZoneInstance::Mode_t::TEAM_PVP:
         if(!ctx.Client)
         {
-            LOG_ERROR("Attempted to start a team PvP match with no client"
-                " context\n");
+            LogActionManagerErrorMsg("Attempted to start a team PvP match with "
+                "no client context\n");
+
             return false;
         }
         else
@@ -3076,8 +3177,9 @@ bool ActionManager::CreateLoot(ActionContext& ctx)
             auto source = zone->GetEntity(ctx.SourceEntityID);
             if(!source)
             {
-                LOG_ERROR("Attempted to create source relative loot without"
-                    " a valid source entity\n");
+                LogActionManagerErrorMsg("Attempted to create source relative "
+                    "loot without a valid source entity\n");
+
                 return false;
             }
 
@@ -3169,7 +3271,7 @@ bool ActionManager::CreateLoot(ActionContext& ctx)
                 true, true);
         }
     }
-    
+
     if(lootTime != 0)
     {
         zoneManager->ScheduleEntityRemoval(lootTime, zone, entityIDs);
@@ -3462,9 +3564,13 @@ bool ActionManager::RecordTimeTrial(ActionContext& ctx, uint32_t rewardItem,
     }
     else if(ctx.Action->GetStopOnFailure())
     {
-        LOG_ERROR(libcomp::String("Attempted to update an active time"
-            " trial record but one does not exist: %1\n")
-            .Arg(state->GetAccountUID().ToString()));
+        LogActionManagerError([&]()
+        {
+            return libcomp::String("Attempted to update an active time"
+                " trial record but one does not exist: %1\n")
+                .Arg(state->GetAccountUID().ToString());
+        });
+
         return false;
     }
 
@@ -3476,8 +3582,12 @@ bool ActionManager::VerifyClient(ActionContext& ctx,
 {
     if(!ctx.Client)
     {
-        LOG_ERROR(libcomp::String("Attempted to execute a %1 with no"
-            " associated client connection\n").Arg(typeName));
+        LogActionManagerError([&]()
+        {
+            return libcomp::String("Attempted to execute a %1 with no"
+                " associated client connection\n").Arg(typeName);
+        });
+
         return false;
     }
 
@@ -3489,8 +3599,12 @@ bool ActionManager::VerifyZone(ActionContext& ctx,
 {
     if(!ctx.CurrentZone)
     {
-        LOG_ERROR(libcomp::String("Attempted to execute a %1 with no"
-            " current zone\n").Arg(typeName));
+        LogActionManagerError([&]()
+        {
+            return libcomp::String("Attempted to execute a %1 with no"
+                " current zone\n").Arg(typeName);
+        });
+
         return false;
     }
 
