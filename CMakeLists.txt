@@ -41,10 +41,10 @@ SET(VERSION_MAJOR 4)
 SET(VERSION_MINOR 5)
 
 # Patch version (a hotfix).
-SET(VERSION_PATCH 0)
+SET(VERSION_PATCH 99)
 
 # Codename for the version.
-SET(VERSION_CODENAME "Uruz")
+SET(VERSION_CODENAME "Hagalaz (Unstable)")
 
 #
 # END OF VERSION CONSTANTS
