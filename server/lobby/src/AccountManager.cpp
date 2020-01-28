@@ -316,8 +316,11 @@ ErrorCodes_t AccountManager::LobbyLogin(const libcomp::String& username,
         return ErrorCodes_t::ACCOUNT_STILL_LOGGED_IN;
     }
 
-    // Client must use the NoWebAuth method if this option is enabled.
-    if(0 < maxClients)
+    // Client must use the NoWebAuth method if this option is enabled. Allow
+    // logins with a machine UUID already set as this means they already got
+    // a valid session ID and logged in via NoWebAuth before it expires. This
+    // is likely due to switching back to the lobby for character select.
+    if(0 < maxClients && login->GetMachineUUID().IsEmpty())
     {
         LogAccountManagerInfo([&]()
         {
@@ -419,8 +422,21 @@ ErrorCodes_t AccountManager::LobbyLogin(const libcomp::String& username,
     }
 
     // Check for the number of logins with the same machine UUID.
-    if(0 < maxClients)
+    if(0 < maxClients && login->GetMachineUUID() != machineUUID)
     {
+        if(!login->GetMachineUUID().IsEmpty())
+        {
+            LogAccountManagerDebug([&]()
+            {
+                return libcomp::String("Account '%1' login switching from"
+                    " one client machine to another.\n").Arg(username);
+            });
+
+            UnregisterMachineClient(username);
+
+            login->SetMachineUUID("");
+        }
+
         auto matchIt = mMachineUUIDs.find(machineUUID);
 
         if(matchIt != mMachineUUIDs.end())
@@ -429,7 +445,7 @@ ErrorCodes_t AccountManager::LobbyLogin(const libcomp::String& username,
             // more are allowed.
             if(maxClients <= matchIt->second)
             {
-                LogAccountManagerInfo([&]()
+                LogAccountManagerDebug([username, machineUUID]()
                 {
                     return libcomp::String("Classic login for account '%1' "
                         "failed due to multiclienting (machine UUID: %2).\n")
@@ -440,10 +456,10 @@ ErrorCodes_t AccountManager::LobbyLogin(const libcomp::String& username,
                 return ErrorCodes_t::NOT_AUTHORIZED;
             }
 
-            LogAccountManagerInfo([&]()
+            LogAccountManagerDebug([machineUUID, username, matchIt]()
             {
-                return libcomp::String("Machine UUID '%1' for account '%2' is "
-                    "logged in %3 times.\n")
+                return libcomp::String("Machine UUID '%1' from account '%2' "
+                    "login raised to %3.\n")
                     .Arg(machineUUID)
                     .Arg(username)
                     .Arg(matchIt->second + 1);
@@ -454,10 +470,10 @@ ErrorCodes_t AccountManager::LobbyLogin(const libcomp::String& username,
         else
         {
             // This is the first client.
-            LogAccountManagerInfo([&]()
+            LogAccountManagerDebug([machineUUID, username]()
             {
-                return libcomp::String("Machine UUID '%1' for account '%2' is "
-                    "logged in 1 time.\n")
+                return libcomp::String("Machine UUID '%1' from account '%2' "
+                    "login raised to 1.\n")
                     .Arg(machineUUID)
                     .Arg(username);
             });
@@ -680,7 +696,7 @@ bool AccountManager::ChannelToChannelSwitch(const libcomp::String& username,
 
 bool AccountManager::Logout(const libcomp::String& username)
 {
-    LogAccountManagerDebug([&]()
+    LogAccountManagerDebug([username]()
     {
         return libcomp::String("Logging out account '%1'.\n").Arg(username);
     });
@@ -715,13 +731,30 @@ bool AccountManager::Logout(const libcomp::String& username)
         mWebGameAPISessions.erase(username.ToLower());
     }
 
-    // Set the session to expire.
-    mServer->GetTimerManager()->ScheduleEventIn(static_cast<int>(
-        config->GetWebAuthTimeOut()), [this](const libcomp::String& _username,
-        const libcomp::String& _sid)
+    if(objects::AccountLogin::State_t::LOBBY == login->GetState())
     {
-        ExpireSession(_username, _sid);
-    }, username, login->GetSessionID());
+        // User is leaving the lobby directly, don't bother with the
+        // expiration and instead remove them now.
+        EraseLogin(username);
+    }
+    else
+    {
+        LogAccountManagerDebug([username, config]()
+        {
+            return libcomp::String("Account session for '%1' will expire in"
+                " %2 second(s).\n").Arg(username)
+                .Arg(config->GetWebAuthTimeOut());
+        });
+
+        // Set the session to expire.
+        mServer->GetTimerManager()->ScheduleEventIn(static_cast<int>(
+            config->GetWebAuthTimeOut()), [this](
+                const libcomp::String& _username,
+                const libcomp::String& _sid)
+        {
+            ExpireSession(_username, _sid);
+        }, username, login->GetSessionID());
+    }
 
     // Reset the character information
     auto cLogin = login->GetCharacterLogin();
@@ -762,6 +795,9 @@ void AccountManager::ExpireSession(const libcomp::String& username,
                 return libcomp::String("Session for username '%1' has "
                     "expired.\n").Arg(username);
             });
+
+            // Unregister machine client if it still exists.
+            UnregisterMachineClient(username);
 
             // It's still set to expire so do so.
             mAccountMap.erase(pair);
@@ -817,7 +853,25 @@ std::shared_ptr<objects::AccountLogin> AccountManager::GetOrCreateLogin(
     return login;
 }
 
-void AccountManager::EraseLogin(const libcomp::String& username)
+void AccountManager::EraseLogin(const libcomp::String& username,
+    bool updateDebugStatus)
+{
+    UnregisterMachineClient(username);
+
+    // Convert the username to lowercase for lookup.
+    libcomp::String lookup = username.ToLower();
+
+    mAccountMap.erase(lookup);
+    mWebGameSessions.erase(lookup);
+    mWebGameAPISessions.erase(lookup);
+
+    if(updateDebugStatus)
+    {
+        UpdateDebugStatus();
+    }
+}
+
+void AccountManager::UnregisterMachineClient(const libcomp::String& username)
 {
     // Convert the username to lowercase for lookup.
     libcomp::String lookup = username.ToLower();
@@ -834,20 +888,31 @@ void AccountManager::EraseLogin(const libcomp::String& username)
         {
             if(1 < entryIt->second)
             {
+                LogAccountManagerDebug([machineUUID, username, entryIt]()
+                {
+                    return libcomp::String("Machine UUID '%1' from account"
+                        " '%2' login lowered to %3.\n")
+                        .Arg(machineUUID)
+                        .Arg(username)
+                        .Arg(entryIt->second - 1);
+                });
+
                 mMachineUUIDs[machineUUID] = entryIt->second - 1;
             }
             else
             {
+                LogAccountManagerDebug([machineUUID, username]()
+                {
+                    return libcomp::String("Machine UUID '%1' from account"
+                        " '%2' login lowered to 0.\n")
+                        .Arg(machineUUID)
+                        .Arg(username);
+                });
+
                 mMachineUUIDs.erase(machineUUID);
             }
         }
     }
-
-    mAccountMap.erase(lookup);
-    mWebGameSessions.erase(lookup);
-    mWebGameAPISessions.erase(lookup);
-
-    UpdateDebugStatus();
 }
 
 bool AccountManager::IsLoggedIn(const libcomp::String& username,
@@ -919,7 +984,7 @@ std::list<libcomp::String> AccountManager::LogoutUsersInWorld(int8_t world,
 
     for(auto username : usernames)
     {
-        mAccountMap.erase(username);
+        EraseLogin(username, false);
     }
 
     UpdateDebugStatus();
