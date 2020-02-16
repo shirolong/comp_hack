@@ -1,3 +1,13 @@
+comphack (4.9.0) xenial; urgency=low
+
+  * Digitalize stat calculation made more accurate
+  * Implementing stat adjustments applied during active skill usage
+  * Proper culture machine expiration
+  * Fixed issue with status effects expiring too early
+  * Fixing issue with invalid xml integer parsing
+
+ -- COMP Omega <compomega@tutanota.com>  Sun, 16 Feb 2020 15:59:07 -0700
+
 comphack (4.8.0) xenial; urgency=low
 
   * Multiclient logic updated to lower counts properly
