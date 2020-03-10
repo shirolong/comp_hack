@@ -533,6 +533,21 @@ public:
         float y, float rot, const libcomp::String& aiType = "");
 
     /**
+     * Create an ally in the specified zone at set coordinates but do not
+     * add it to the zone yet
+     * @param zone Pointer to the zone where the entity should be spawned
+     * @param demonID Demon/enemy type ID to spawn
+     * @param spotID Optional spot ID to add the enemy to
+     * @param x X coordinate to render the ally at
+     * @param y Y coordinate to render the ally at
+     * @param rot Rotation to render the ally with
+     * @return Pointer to the new ActiveEntityState
+     */
+    std::shared_ptr<ActiveEntityState> CreateAlly(
+        const std::shared_ptr<Zone>& zone, uint32_t demonID, uint32_t spotID,
+        float x, float y, float rot);
+
+    /**
      * Create an enemy (or ally) in the specified zone at set coordinates
      * but do not add it to the zone yet
      * @param zone Pointer to the zone where the entity should be spawned
@@ -935,6 +950,12 @@ public:
         const std::shared_ptr<objects::MiZoneData>& zoneData = nullptr);
 
     /**
+     * Get a random rotation value (in radians)
+     * @return Rotation value (in radians)
+     */
+    static float GetRandomRotation();
+
+    /**
      * Get a point directly away or directly towards two specified points.
      * @param sourceX Point 1 X coordinate
      * @param sourceY Point 1 Y coordinate
@@ -1138,12 +1159,14 @@ private:
      * @param x X coordinate to render the enemy at
      * @param y Y coordinate to render the enemy at
      * @param rot Rotation to render the enemy with
+     * @param asAlly Optional override to create an ally regardless of
+     *  spawn category, defaults to false
      * @return Pointer to the new ActiveEntityState
      */
     std::shared_ptr<ActiveEntityState> CreateEnemy(
         const std::shared_ptr<Zone>& zone, uint32_t demonID,
         const std::shared_ptr<objects::Spawn>& spawn, float x, float y,
-        float rot);
+        float rot, bool asAlly = false);
 
     /**
      * Send entity information about an enemy in a zone
