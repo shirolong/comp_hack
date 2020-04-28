@@ -5,23 +5,75 @@
     <name>Downloader</name>
     <message>
         <location filename="../src/Downloader.cpp" line="170"/>
+        <source>Starting update</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Downloader.cpp" line="174"/>
         <source>%1/hashlist.dat</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/Downloader.cpp" line="174"/>
+        <location filename="../src/Downloader.cpp" line="178"/>
         <source>%1/hashlist.ver</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="../src/Downloader.cpp" line="198"/>
+        <location filename="../src/Downloader.cpp" line="189"/>
+        <source>Download timeout: will retry download</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Downloader.cpp" line="196"/>
+        <source>Download timeout: giving up</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Downloader.cpp" line="208"/>
         <source>Download failed: %1</source>
         <translation>Ошибка загрузки: %1</translation>
     </message>
     <message>
-        <location filename="../src/Downloader.cpp" line="212"/>
+        <location filename="../src/Downloader.cpp" line="222"/>
         <source>Download failed: Server returned status code %1 %2</source>
         <translation>Ошибка загрузки: Код ответа сервера: %1 %2</translation>
+    </message>
+    <message>
+        <location filename="../src/Downloader.cpp" line="234"/>
+        <location filename="../src/Downloader.cpp" line="331"/>
+        <source>Read %1 bytes of data</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Downloader.cpp" line="334"/>
+        <source>Download finished</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Downloader.cpp" line="356"/>
+        <source>Checking version: up-to-date</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Downloader.cpp" line="363"/>
+        <source>Checking version: update required</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Downloader.cpp" line="668"/>
+        <source>Update finished</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Downloader.cpp" line="684"/>
+        <source>Starting download of %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Downloader.cpp" line="729"/>
+        <source>%1: %2
+</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -346,7 +398,7 @@
     </message>
     <message>
         <location filename="../src/Updater.cpp" line="431"/>
-        <location filename="../src/Updater.cpp" line="549"/>
+        <location filename="../src/Updater.cpp" line="556"/>
         <source>Updater Error</source>
         <translation>Ошибка обновления</translation>
     </message>
@@ -354,6 +406,16 @@
         <location filename="../src/Updater.cpp" line="432"/>
         <source>Failed to patch %1</source>
         <translation>Не удалось пропатчить %1</translation>
+    </message>
+    <message>
+        <location filename="../src/Updater.cpp" line="487"/>
+        <source>Recheck Files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/Updater.cpp" line="488"/>
+        <source>Are you sure you wish to recheck all files? This can take a very long time to complete.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 </TS>
